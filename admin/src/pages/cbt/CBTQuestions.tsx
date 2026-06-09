@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, apiCBT } from "../../api";
-import { Sparkles, Save, Loader2, Check, AlertCircle } from "lucide-react";
+import { Sparkles, Save, Loader2, Check, AlertCircle, Info } from "lucide-react";
 
 interface Option {
   opt_id: string;
@@ -43,6 +43,7 @@ export default function CBTQuestions() {
   const [level, setLevel] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [batchProgress, setBatchProgress] = useState("");
   const [result, setResult] = useState<GenResult | null>(null);
   const [questions, setQuestions] = useState<GenQuestion[]>([]);
   const [err, setErr] = useState("");
@@ -77,23 +78,53 @@ export default function CBTQuestions() {
     setErr("");
     setSaved(false);
     setLoading(true);
+    setQuestions([]);
+    setResult(null);
+
+    const BATCH_SIZE = 5;
+    const batches = Math.ceil(count / BATCH_SIZE);
+    const allQuestions: GenQuestion[] = [];
+    let lastResult: GenResult | null = null;
+    let batchErrors: string[] = [];
 
     try {
-      const body: Record<string, unknown> = {
-        topic: topic.trim(),
-        difficulty,
-        count,
-        types: qTypes,
-      };
-      if (contextText.trim()) body.context_text = contextText.trim();
-      if (courseId.trim()) body.course_name = courseId.trim();
+      for (let i = 0; i < batches; i++) {
+        const batchCount = Math.min(BATCH_SIZE, count - i * BATCH_SIZE);
+        setBatchProgress(`Generating batch ${i + 1}/${batches} (${batchCount} questions)...`);
 
-      const res = await apiCBT<GenResult>("/ai/generate", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      setResult(res);
-      setQuestions(res.questions || []);
+        const body: Record<string, unknown> = {
+          topic: topic.trim(),
+          difficulty,
+          count: batchCount,
+          types: qTypes,
+        };
+        if (courseId.trim()) body.course_name = courseId.trim();
+        // Only send context on first batch to avoid repeats
+        if (i === 0 && contextText.trim()) body.context_text = contextText.trim();
+
+        try {
+          const res = await apiCBT<GenResult>("/ai/generate", {
+            method: "POST",
+            body: JSON.stringify(body),
+          });
+          lastResult = res;
+          if (res.questions?.length) {
+            allQuestions.push(...res.questions);
+          }
+          if (res.parse_error) {
+            batchErrors.push(`Batch ${i + 1}: ${res.parse_error}`);
+          }
+        } catch (batchErr) {
+          batchErrors.push(`Batch ${i + 1}: ${String(batchErr)}`);
+        }
+      }
+
+      setResult(lastResult);
+      setQuestions(allQuestions);
+      setBatchProgress("");
+      if (batchErrors.length > 0 && allQuestions.length === 0) {
+        setErr(batchErrors.join(" | "));
+      }
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -203,10 +234,13 @@ export default function CBTQuestions() {
               type="number"
               value={count}
               min={1}
-              max={20}
-              onChange={(e) => setCount(Number(e.target.value))}
+              max={50}
+              onChange={(e) => setCount(Math.min(50, Math.max(1, Number(e.target.value))))}
               className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
             />
+            <p className="text-xs text-slate-400 mt-1">
+              {count > 5 ? `Will generate in ${Math.ceil(count / 5)} batches of ~5` : "Max 5 per call for best quality"}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -263,10 +297,16 @@ export default function CBTQuestions() {
           <textarea
             value={contextText}
             onChange={(e) => setContextText(e.target.value)}
-            placeholder="Paste curriculum text, syllabus, or past paper content here for the AI to generate questions from..."
+            placeholder="Paste a short excerpt (1-2 paragraphs) for the AI to generate questions from. Long text will be truncated."
             rows={4}
             className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm resize-y"
           />
+          {contextText.length > 2000 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Context is {contextText.length.toLocaleString()} chars. Only the first ~3,000 will be used. Consider shortening for better results.
+            </p>
+          )}
         </div>
 
         {err && (
@@ -282,7 +322,7 @@ export default function CBTQuestions() {
           className="flex items-center gap-2 px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {loading ? "Generating..." : "Generate Questions"}
+          {loading ? (batchProgress || "Generating...") : "Generate Questions"}
         </button>
       </div>
 
