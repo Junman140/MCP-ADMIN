@@ -15,6 +15,13 @@ import {
   Bell,
   PenSquare,
   Sparkles,
+  FileText,
+  Award,
+  CalendarCheck,
+  Megaphone,
+  MessageSquare,
+  CalendarClock,
+  TrendingUp,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -44,6 +51,20 @@ export default function Sidebar() {
         { label: "CBT Management", href: "/cbt/manage", icon: ClipboardList },
         { label: "CBT Marking", href: "/cbt/marking", icon: PenSquare },
         { label: "AI Generator", href: "/cbt/questions", icon: Sparkles },
+      ],
+    },
+    {
+      title: "LMS",
+      items: [
+        { label: "Course Builder", href: "/lms/courses", icon: BookOpen },
+        { label: "Quizzes", href: "/lms/quizzes", icon: ClipboardList },
+        { label: "Assignments", href: "/lms/assignments", icon: FileText },
+        { label: "Grade Book", href: "/lms/grades", icon: Award },
+        { label: "Attendance", href: "/lms/attendance", icon: CalendarCheck },
+        { label: "Announcements", href: "/lms/announcements", icon: Megaphone },
+        { label: "Discussions", href: "/lms/forums", icon: MessageSquare },
+        { label: "Timetable", href: "/lms/timetable", icon: CalendarClock },
+        { label: "LMS Analytics", href: "/lms/analytics", icon: TrendingUp },
       ],
     },
     {

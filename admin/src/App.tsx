@@ -21,6 +21,16 @@ import CBTMarking from "./pages/cbt/CBTMarking";
 import CBTQuestions from "./pages/cbt/CBTQuestions";
 import Notifications from "./pages/Notifications";
 import Home from "./pages/Home";
+import LecturerDashboard from "./pages/lms/LecturerDashboard";
+import CourseBuilder from "./pages/lms/CourseBuilder";
+import QuizBuilder from "./pages/lms/QuizBuilder";
+import AssignmentManager from "./pages/lms/AssignmentManager";
+import GradeBook from "./pages/lms/GradeBook";
+import AttendanceManager from "./pages/lms/AttendanceManager";
+import AnnouncementManager from "./pages/lms/AnnouncementManager";
+import ForumModeration from "./pages/lms/ForumModeration";
+import TimetableViewer from "./pages/lms/TimetableViewer";
+import LMSAnalytics from "./pages/lms/LMSAnalytics";
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -49,6 +59,16 @@ export default function App() {
         <Route path="verify" element={<Verify />} />
         <Route path="reports" element={<Reports />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="lms" element={<LecturerDashboard />} />
+        <Route path="lms/courses" element={<CourseBuilder />} />
+        <Route path="lms/quizzes" element={<QuizBuilder />} />
+        <Route path="lms/assignments" element={<AssignmentManager />} />
+        <Route path="lms/grades" element={<GradeBook />} />
+        <Route path="lms/attendance" element={<AttendanceManager />} />
+        <Route path="lms/announcements" element={<AnnouncementManager />} />
+        <Route path="lms/forums" element={<ForumModeration />} />
+        <Route path="lms/timetable" element={<TimetableViewer />} />
+        <Route path="lms/analytics" element={<LMSAnalytics />} />
         <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="catalog" replace />} />
           <Route path="catalog" element={<Catalog />} />

@@ -99,7 +99,20 @@ function needsTenantQuery(path: string): boolean {
     path.startsWith("/academic-sessions") ||
     path.startsWith("/reports") ||
     path.startsWith("/notifications") ||
-    path.startsWith("/verify")
+    path.startsWith("/verify") ||
+    path.startsWith("/lecturer") ||
+    path.startsWith("/timetable") ||
+    path.startsWith("/assignments") ||
+    path.startsWith("/quizzes/") ||
+    path.startsWith("/grades") ||
+    path.startsWith("/attendance") ||
+    path.startsWith("/forums") ||
+    path.startsWith("/announcements") ||
+    path.startsWith("/messages") ||
+    path.startsWith("/student") ||
+    path.startsWith("/analytics") ||
+    path.startsWith("/integration") ||
+    path.startsWith("/content")
   );
 }
 
