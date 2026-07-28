@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, apiCBT } from "../api";
-import { Users, BookOpen, Fingerprint, Activity, Clock, ShieldAlert, CheckSquare } from "lucide-react";
+import { Users, BookOpen, Fingerprint, Activity, Clock, ShieldAlert, CheckSquare, Wifi, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
+import { pingBridge } from "../lib/capture";
 
 type BioStats = {
   total_enrolled: number;
@@ -28,6 +29,7 @@ export default function Home() {
   const [cbtStats, setCbtStats] = useState<CbtStats | null>(null);
   const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scannerOk, setScannerOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -36,6 +38,9 @@ export default function Home() {
       api<RecentEvent[]>("/reports/verification-events")
         .then((r) => setRecentEvents(r.slice(0, 6)))
         .catch(() => {}),
+      pingBridge(localStorage.getItem("captureBridgeUrl") || "http://127.0.0.1:5055")
+        .then((r) => setScannerOk(r.ok))
+        .catch(() => setScannerOk(false)),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -72,6 +77,38 @@ export default function Home() {
             </div>
           );
         })}
+      </div>
+
+      {/* Scanner status banner */}
+      <div className={`p-4 rounded-xl border flex items-center gap-3 ${
+        scannerOk === true ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30" :
+        scannerOk === false ? "bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/30" :
+        "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+      }`}>
+        {scannerOk === true ? <Wifi className="w-5 h-5 text-emerald-500" /> :
+         scannerOk === false ? <WifiOff className="w-5 h-5 text-red-500" /> :
+         <Activity className="w-5 h-5 text-slate-400 animate-pulse" />}
+        <div className="flex-1">
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">
+            {scannerOk === true ? "Fingerprint scanner connected" :
+             scannerOk === false ? "Fingerprint scanner not detected" :
+             "Checking scanner..."}
+          </span>
+          {scannerOk === false && (
+            <p className="text-xs text-red-600 dark:text-red-400 m-0 mt-0.5">
+              Plug in the Futronic FS80H and double-click <code className="bg-red-100 dark:bg-red-500/20 px-1 rounded text-red-700 dark:text-red-300">Fingerprint Scanner Bridge.bat</code>
+            </p>
+          )}
+        </div>
+        {scannerOk === false && (
+          <button type="button" onClick={() => {
+            pingBridge(localStorage.getItem("captureBridgeUrl") || "http://127.0.0.1:5055")
+              .then((r) => setScannerOk(r.ok))
+              .catch(() => setScannerOk(false));
+          }} className="secondary text-xs py-1 px-3">
+            Retry
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

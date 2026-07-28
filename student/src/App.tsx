@@ -10,6 +10,7 @@ import Forums from "./pages/Forums";
 import Messages from "./pages/Messages";
 import StudentTimetable from "./pages/StudentTimetable";
 import StudentAttendance from "./pages/StudentAttendance";
+import Settings from "./pages/Settings";
 import StudentLayout from "./pages/StudentLayout";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="messages" element={<Messages />} />
           <Route path="timetable" element={<StudentTimetable />} />
           <Route path="attendance" element={<StudentAttendance />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

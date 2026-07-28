@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { getUser } from "../api";
 import {
   LayoutDashboard,
   Users,
@@ -26,6 +27,8 @@ import {
 
 export default function Sidebar() {
   const { pathname } = useLocation();
+  const user = getUser();
+  const isOperator = user?.role === "BIOMETRIC_OPERATOR" || user?.role === "ENROLLER" || user?.role === "INVIGILATOR";
 
   const navGroups = [
     {
@@ -56,6 +59,7 @@ export default function Sidebar() {
     {
       title: "LMS",
       items: [
+        { label: "Dashboard", href: "/lms", icon: LayoutDashboard },
         { label: "Course Builder", href: "/lms/courses", icon: BookOpen },
         { label: "Quizzes", href: "/lms/quizzes", icon: ClipboardList },
         { label: "Assignments", href: "/lms/assignments", icon: FileText },
@@ -72,11 +76,22 @@ export default function Sidebar() {
       items: [
         { label: "Catalog", href: "/settings/catalog", icon: Settings },
         { label: "Sessions", href: "/settings/sessions", icon: Calendar },
+        { label: "Lecturers", href: "/settings/lecturers", icon: Users },
         { label: "Reports", href: "/reports", icon: FileBarChart },
         { label: "Notifications", href: "/notifications", icon: Bell },
       ],
     },
   ];
+
+  // Biometric operators see only what they need
+  const filteredGroups = isOperator
+    ? navGroups.filter(g => g.title === "Main" || g.title === "Biometric").concat([
+        { title: "Other", items: [
+          { label: "Reports", href: "/reports", icon: FileBarChart },
+          { label: "Notifications", href: "/notifications", icon: Bell },
+        ]}
+      ])
+    : navGroups;
 
   return (
     <aside className="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col h-full overflow-y-auto">
@@ -87,7 +102,7 @@ export default function Sidebar() {
       </div>
       
       <div className="flex-1 px-4 space-y-6 pb-8">
-        {navGroups.map((group) => (
+        {filteredGroups.map((group) => (
           <div key={group.title}>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">
               {group.title}

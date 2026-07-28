@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { BookOpen, ClipboardList, Award, MessageSquare, CalendarClock, QrCode, Bell, LogOut, LayoutDashboard } from "lucide-react";
+import { BookOpen, ClipboardList, Award, MessageSquare, CalendarClock, QrCode, Bell, LogOut, LayoutDashboard, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -24,6 +24,7 @@ export default function StudentLayout({ onLogout }: { onLogout: () => void }) {
     { href: "/messages", icon: Bell, label: "Messages", badge: unreadCount },
     { href: "/timetable", icon: CalendarClock, label: "Timetable" },
     { href: "/attendance", icon: QrCode, label: "Attendance" },
+    { href: "/settings", icon: Settings2, label: "Settings" },
   ];
 
   return (

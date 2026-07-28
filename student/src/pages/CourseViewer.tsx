@@ -5,62 +5,81 @@ import { Play, FileText, FileImage, CheckCircle } from "lucide-react";
 
 type Module = { id: string; title: string; order: number };
 type ContentItem = { id: string; type: string; title: string; minioKey?: string; duration?: number; description?: string };
-type Progress = { id: string; moduleId: string; completionPercent: number };
+type Progress = { id: string; completedItemIds: string[]; completionPercentage: number };
 
 export default function CourseViewer() {
   const { id } = useParams<{ id: string }>();
   const [modules, setModules] = useState<Module[]>([]);
   const [items, setItems] = useState<Record<string, ContentItem[]>>({});
-  const [progress, setProgress] = useState<Progress[]>([]);
+  const [progress, setProgress] = useState<Progress | null>(null);
   const [selectedModule, setSelectedModule] = useState("");
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
 
   useEffect(() => {
     if (!id) return;
     api<Module[]>(`/courses/${id}/modules`).then(setModules).catch(() => {});
-    api<Progress[]>(`/student/progress/${id}`).then(setProgress).catch(() => {});
+    api<Progress>(`/student/progress/${id}`).then(setProgress).catch(() => {});
   }, [id]);
 
   async function selectModule(modId: string) {
     setSelectedModule(modId);
-    const it = await api<ContentItem[]>(`/modules/${modId}/items`);
-    setItems((prev) => ({ ...prev, [modId]: it }));
-    await api(`/student/progress/${id}`, {
-      method: "POST",
-      body: JSON.stringify({ moduleId: modId, completionPercent: 0, lastAccessedAt: new Date().toISOString() }),
-    });
+    try {
+      const it = await api<ContentItem[]>(`/modules/${modId}/items`);
+      setItems((prev) => ({ ...prev, [modId]: Array.isArray(it) ? it : [] }));
+    } catch (_) {
+      setItems((prev) => ({ ...prev, [modId]: [] }));
+    }
+  }
+
+  async function markItemComplete(itemId: string) {
+    try {
+      const updated = await api<Progress>(`/student/progress/${id}`, {
+        method: "POST",
+        body: JSON.stringify({ itemId, completed: true }),
+      });
+      setProgress(updated);
+    } catch (_) {}
   }
 
   if (!id) return <p>Select a course</p>;
 
-  const completedModules = progress?.filter((p) => p.completionPercent >= 100).length ?? 0;
+  const completedItems = progress?.completedItemIds?.length ?? 0;
+  const allItems = Object.values(items).flat().length;
+  const overallPct = progress?.completionPercentage ?? 0;
 
   return (
     <div className="flex gap-6 max-w-6xl">
       <div className="w-72 shrink-0 space-y-2">
         <h2 className="text-lg font-bold">Modules</h2>
         <div className="bg-slate-200 dark:bg-slate-700 h-2 rounded mb-1">
-          <div className="bg-sky-500 h-2 rounded" style={{ width: `${modules.length > 0 ? (completedModules / modules.length) * 100 : 0}%` }} />
+          <div className="bg-sky-500 h-2 rounded" style={{ width: `${overallPct}%` }} />
         </div>
-        <p className="text-xs text-slate-500 mb-3">{completedModules}/{modules.length} completed</p>
+        <p className="text-xs text-slate-500 mb-3">{completedItems} items completed ({overallPct}%)</p>
         {modules.map((m) => {
-          const p = progress?.find((x) => x.moduleId === m.id);
           const active = selectedModule === m.id;
+          const moduleItems = items[m.id] ?? [];
+          const moduleCompleted = moduleItems.filter((it) => progress?.completedItemIds?.includes(it.id)).length;
           return (
             <div key={m.id}>
               <button onClick={() => selectModule(m.id)}
                 className={`w-full text-left p-3 rounded-lg text-sm transition-colors ${active ? "bg-sky-50 border border-sky-300" : "hover:bg-slate-100 border border-transparent"}`}>
                 <div className="flex items-center gap-2">
-                  {p && p.completionPercent >= 100 ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <FileText className="w-4 h-4 text-slate-400" />}
+                  {moduleItems.length > 0 && moduleCompleted === moduleItems.length ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <FileText className="w-4 h-4 text-slate-400" />}
                   <span className="font-medium">{m.title}</span>
                 </div>
-                {p && <div className="ml-6 mt-1 h-1.5 bg-slate-200 rounded"><div className="h-1.5 bg-sky-500 rounded" style={{ width: `${p.completionPercent}%` }} /></div>}
+                {moduleItems.length > 0 && (
+                  <div className="ml-6 mt-1 h-1.5 bg-slate-200 rounded">
+                    <div className="h-1.5 bg-sky-500 rounded" style={{ width: `${(moduleCompleted / moduleItems.length) * 100}%` }} />
+                  </div>
+                )}
               </button>
-              {active && (items[m.id] ?? []).map((item) => (
-                <button key={item.id} onClick={() => setSelectedItem(item)}
+              {active && moduleItems.map((item) => (
+                <button key={item.id}
+                  onClick={() => { setSelectedItem(item); markItemComplete(item.id); }}
                   className={`w-full text-left p-2 pl-8 text-sm hover:bg-slate-50 ${selectedItem?.id === item.id ? "text-sky-600 font-medium" : "text-slate-600"}`}>
                   <div className="flex items-center gap-2">
-                    {item.type === "video" ? <Play className="w-3 h-3" /> : item.type === "pdf" ? <FileText className="w-3 h-3" /> : <FileImage className="w-3 h-3" />}
+                    {progress?.completedItemIds?.includes(item.id) ? <CheckCircle className="w-3 h-3 text-emerald-500" /> :
+                      item.type === "video" ? <Play className="w-3 h-3" /> : item.type === "pdf" ? <FileText className="w-3 h-3" /> : <FileImage className="w-3 h-3" />}
                     {item.title}
                   </div>
                 </button>

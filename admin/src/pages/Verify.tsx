@@ -110,6 +110,7 @@ export default function Verify() {
     api<RecentEvent[]>("/reports/verification-events")
       .then((r) => setRecent(r.slice(0, 20)))
       .catch(() => {});
+    checkBridge();
   }, []);
 
   useEffect(() => {
@@ -294,26 +295,64 @@ export default function Verify() {
             ))}
           </select>
 
-          <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl mt-4 border border-slate-200 dark:border-slate-800">
-            <h3 className="text-sm font-semibold mb-3">Capture Fingerprint</h3>
-            <div className="flex flex-wrap items-center gap-3">
-              <input
-                value={bridgeUrl}
-                onChange={(e) => { setBridgeUrl(e.target.value); setBridgeStatus(null); setBridgeError(null); }}
-                placeholder="http://127.0.0.1:5055"
-                className="max-w-[220px]"
-              />
-              <button type="button" className="secondary" onClick={checkBridge} disabled={bridgeStatus === "checking"}>
-                {bridgeStatus === "checking" ? "Checking…" : "Test connection"}
-              </button>
-              <button type="button" onClick={captureLive} disabled={capturing}>
-                {capturing ? "Capturing…" : "Capture live"}
-              </button>
-              {bridgeStatus === "ok" && <span className="text-emerald-500 dark:text-emerald-400 text-sm ml-2 font-medium">✓ Connected: {bridgeScanner}</span>}
-              {bridgeStatus === "error" && <span className="text-red-500 dark:text-red-400 text-sm ml-2 font-medium">✗ Cannot connect</span>}
+          <div className={`p-4 rounded-xl mt-4 border ${
+            bridgeStatus === "ok" ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30" :
+            bridgeStatus === "error" ? "bg-red-50 dark:bg-red-500/10 border-red-300 dark:border-red-500/30" :
+            bridgeStatus === "checking" ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800" :
+            "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${
+                  bridgeStatus === "ok" ? "bg-emerald-500 animate-pulse" :
+                  bridgeStatus === "error" ? "bg-red-500" :
+                  bridgeStatus === "checking" ? "bg-amber-500 animate-pulse" : "bg-slate-400"
+                }`} />
+                Fingerprint Scanner
+                {bridgeStatus === "ok" && <span className="text-emerald-600 dark:text-emerald-400 font-normal text-xs ml-1">{bridgeScanner}</span>}
+              </h3>
+              <div className="flex gap-2">
+                <button type="button" onClick={checkBridge} disabled={bridgeStatus === "checking"} className="secondary text-xs py-1 px-2">
+                  {bridgeStatus === "checking" ? "Checking..." : "Retry"}
+                </button>
+                {bridgeStatus === "ok" && (
+                  <button type="button" onClick={captureLive} disabled={capturing} className="bg-sky-500 hover:bg-sky-400 text-white text-xs py-1 px-2">
+                    {capturing ? "Capturing..." : "Capture live"}
+                  </button>
+                )}
+              </div>
             </div>
-            {bridgeStatus === "error" && bridgeError && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-3 mb-0 max-w-xl leading-relaxed">{bridgeError}</p>
+
+            {bridgeStatus === "ok" && (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 m-0">Scanner connected. Place finger and capture to identify.</p>
+            )}
+
+            {bridgeStatus === "error" && (
+              <div className="mt-2">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400 m-0 mb-1">Scanner not available</p>
+                <p className="text-xs text-red-600 dark:text-red-400 m-0 mb-2">{bridgeError || "Could not reach the fingerprint scanner."}</p>
+                <details className="text-xs text-slate-600 dark:text-slate-400 bg-white/50 dark:bg-black/20 rounded-lg p-3 border border-red-200 dark:border-red-500/20">
+                  <summary className="cursor-pointer font-medium text-slate-700 dark:text-slate-300 mb-2">How to fix this</summary>
+                  <ol className="m-0 pl-4 space-y-1">
+                    <li>Make sure the Futronic FS80H scanner is plugged into a <strong>USB port</strong> on this computer.</li>
+                    <li>The fingerprint bridge must be running. Double-click <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">Fingerprint Scanner Bridge.bat</code> in the project folder.</li>
+                    <li>If the bridge is already running, restart it and click <strong>Retry</strong>.</li>
+                    <li>If this is a different computer, update the scanner address below.</li>
+                  </ol>
+                </details>
+                <div className="mt-2 flex items-center gap-2">
+                  <input value={bridgeUrl} onChange={(e) => { setBridgeUrl(e.target.value); setBridgeStatus(null); setBridgeError(null); }} placeholder="http://127.0.0.1:5055" className="max-w-[220px] text-xs" />
+                  <span className="text-xs text-slate-400">Advanced: scanner address</span>
+                </div>
+              </div>
+            )}
+
+            {bridgeStatus === "checking" && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 m-0">Checking scanner connection...</p>
+            )}
+
+            {bridgeStatus === null && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 m-0">Checking connection automatically...</p>
             )}
           </div>
 

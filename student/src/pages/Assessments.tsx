@@ -3,10 +3,9 @@ import { api, getUser } from "../api";
 import { FileText, Clock, Upload, Loader2 } from "lucide-react";
 
 type Assignment = { id: string; courseId: string; title: string; deadline?: string; maxScore: number };
-type QuizDef = { id: string; courseId: string; title: string; timeLimit?: number; questions?: { text: string; type: string; points: number }[] };
+type QuizDef = { id: string; courseId: string; title: string; timeLimit?: number; questions?: { _id: string; text: string; type: string; points: number; options?: string[] }[] };
 type Course = { id: string; code: string; title: string };
-type QuizQuestion = { text: string; type: string; points: number; options?: { text: string }[] };
-type QuizAttempt = { id: string; questions: QuizQuestion[] };
+type QuizAttempt = { id: string };
 
 export default function Assessments() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -16,8 +15,9 @@ export default function Assessments() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [quizAttempt, setQuizAttempt] = useState<QuizAttempt | null>(null);
+  const [activeQuiz, setActiveQuiz] = useState<QuizDef | null>(null);
   const [quizId, setQuizId] = useState("");
-  const [answers, setAnswers] = useState<Record<number, number[]>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { api<Course[]>("/courses").then(setCourses).catch(() => {}); }, []);
@@ -32,8 +32,10 @@ export default function Assessments() {
   async function startQuiz(qid: string) {
     try {
       const a = await api<QuizAttempt>(`/quizzes/${qid}/start`, { method: "POST" });
+      const quiz = quizzes.find((q) => q.id === qid);
       setQuizId(qid);
       setQuizAttempt(a);
+      setActiveQuiz(quiz ?? null);
       setAnswers({});
     } catch {}
   }
@@ -41,48 +43,52 @@ export default function Assessments() {
   async function submitQuiz() {
     if (!quizAttempt) return;
     setSubmitting(true);
-    const formatted = quizAttempt.questions.map((q, i) => ({
-      questionIndex: i,
-      selectedOptions: answers[i] ?? [],
-    }));
     try {
       await api(`/quizzes/${quizId}/submit`, {
         method: "POST",
-        body: JSON.stringify({ attemptId: quizAttempt.id, answers: formatted }),
+        body: JSON.stringify({ answers }),
       });
       alert("Quiz submitted! Check Grades for results.");
     } catch {}
     setSubmitting(false);
     setQuizAttempt(null);
+    setActiveQuiz(null);
     setQuizId("");
   }
 
-  if (quizAttempt) {
+  if (quizAttempt && activeQuiz) {
+    const questions = activeQuiz.questions ?? [];
     return (
       <div className="space-y-4 max-w-4xl">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Quiz</h1>
-          <span className="text-sm text-slate-500">{quizAttempt.questions.length} questions</span>
+          <h1 className="text-2xl font-bold">{activeQuiz.title}</h1>
+          <span className="text-sm text-slate-500">{questions.length} questions</span>
         </div>
-        {quizAttempt.questions.map((q, qi) => (
-          <div key={qi} className="card p-4">
-            <p className="font-semibold mb-2">{qi + 1}. {q.text}</p>
-            {q.options && q.options.map((o, oi) => (
-              <label key={oi} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                <input type="checkbox" checked={(answers[qi] ?? []).includes(oi)}
-                  onChange={(e) => {
-                    setAnswers((prev) => {
-                      const cur = new Set(prev[qi] ?? []);
-                      e.target.checked ? cur.add(oi) : cur.delete(oi);
-                      return { ...prev, [qi]: [...cur] };
-                    });
-                  }} />
-                <span className="text-sm">{o.text}</span>
-              </label>
-            ))}
-            {!q.options && (
-              <textarea className="input mt-2" rows={3} placeholder="Your answer..." value={(answers[qi] ?? []).join("")}
-                onChange={(e) => setAnswers((prev) => ({ ...prev, [qi]: [e.target.value as unknown as number] }))} />
+        {questions.map((q) => (
+          <div key={q._id} className="card p-4">
+            <p className="font-semibold mb-2">{q.text}</p>
+            {q.type === "multiple-choice" && q.options ? (
+              q.options.map((opt, oi) => (
+                <label key={oi} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                  <input type="radio" name={q._id} checked={answers[q._id] === opt}
+                    onChange={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))} />
+                  <span className="text-sm">{opt}</span>
+                </label>
+              ))
+            ) : q.type === "true-false" ? (
+              <>
+                {["True", "False"].map((opt) => (
+                  <label key={opt} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                    <input type="radio" name={q._id} checked={answers[q._id] === opt}
+                      onChange={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))} />
+                    <span className="text-sm">{opt}</span>
+                  </label>
+                ))}
+              </>
+            ) : (
+              <textarea className="input mt-2 w-full" rows={3} placeholder="Your answer..."
+                value={answers[q._id] ?? ""}
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [q._id]: e.target.value }))} />
             )}
           </div>
         ))}

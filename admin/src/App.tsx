@@ -1,8 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getToken } from "./api";
+import { getToken, getUser } from "./api";
 import Login from "./pages/Login";
 import Layout from "./pages/Layout";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import SettingsLayout from "./pages/SettingsLayout";
 import Students from "./pages/Students";
 import StudentAdd from "./pages/StudentAdd";
@@ -13,6 +14,7 @@ import Verify from "./pages/Verify";
 import Catalog from "./pages/Catalog";
 import AcademicSessions from "./pages/AcademicSessions";
 import CourseRegistrations from "./pages/CourseRegistrations";
+import LecturerManagement from "./pages/settings/LecturerManagement";
 import Devices from "./pages/Devices";
 import Reports from "./pages/Reports";
 import CBTExams from "./pages/cbt/CBTExams";
@@ -37,7 +39,42 @@ export default function App() {
   const [authed, setAuthed] = useState(false);
 
   useEffect(() => { setAuthed(!!getToken()); setReady(true); }, []);
+
+  const user = getUser();
+  const isSuper = user?.role === "SUPER_ADMIN";
+  const isBioOp = user?.role === "BIOMETRIC_OPERATOR" || user?.role === "ENROLLER" || user?.role === "INVIGILATOR";
+
   if (!ready) return null;
+
+  // Super admin — separate dashboard
+  if (authed && isSuper) {
+    return (
+      <Routes>
+        <Route path="*" element={<SuperAdminDashboard />} />
+      </Routes>
+    );
+  }
+
+  // Biometric/Exam operators — limited access
+  if (authed && isBioOp) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login onLogin={() => setAuthed(true)} />} />
+        <Route path="/" element={authed ? <Layout onLogout={() => setAuthed(false)} /> : <Navigate to="/login" replace />}>
+          <Route index element={<Home />} />
+          <Route path="enroll/:studentId" element={<Enroll />} />
+          <Route path="verify" element={<Verify />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="students" element={<Students />} />
+          <Route path="exams" element={<Exams />} />
+          <Route path="settings" element={<SettingsLayout />}>
+            <Route path="devices" element={<Devices />} />
+          </Route>
+        </Route>
+      </Routes>
+    );
+  }
 
   return (
     <Routes>
@@ -74,6 +111,7 @@ export default function App() {
           <Route path="catalog" element={<Catalog />} />
           <Route path="sessions" element={<AcademicSessions />} />
           <Route path="registrations" element={<CourseRegistrations />} />
+          <Route path="lecturers" element={<LecturerManagement />} />
           <Route path="devices" element={<Devices />} />
         </Route>
       </Route>
