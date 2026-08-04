@@ -28,6 +28,7 @@ export async function login(email: string, password: string) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+  if (data.user.role !== "LECTURER") throw new Error("This portal is for lecturers only.");
   setToken(data.token);
   setUser(data.user);
   return data;
