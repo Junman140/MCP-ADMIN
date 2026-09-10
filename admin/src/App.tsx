@@ -33,6 +33,8 @@ import AnnouncementManager from "./pages/lms/AnnouncementManager";
 import ForumModeration from "./pages/lms/ForumModeration";
 import TimetableViewer from "./pages/lms/TimetableViewer";
 import LMSAnalytics from "./pages/lms/LMSAnalytics";
+import FeeConfigs from "./pages/lms/FeeConfigs";
+import PaymentTracking from "./pages/lms/PaymentTracking";
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -106,6 +108,8 @@ export default function App() {
         <Route path="lms/forums" element={<ForumModeration />} />
         <Route path="lms/timetable" element={<TimetableViewer />} />
         <Route path="lms/analytics" element={<LMSAnalytics />} />
+        <Route path="lms/fees" element={<FeeConfigs />} />
+        <Route path="lms/payments" element={<PaymentTracking />} />
         <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="catalog" replace />} />
           <Route path="catalog" element={<Catalog />} />

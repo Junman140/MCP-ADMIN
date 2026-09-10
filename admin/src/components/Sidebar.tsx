@@ -23,6 +23,8 @@ import {
   MessageSquare,
   CalendarClock,
   TrendingUp,
+  CreditCard,
+  Receipt,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -69,6 +71,13 @@ export default function Sidebar() {
         { label: "Discussions", href: "/lms/forums", icon: MessageSquare },
         { label: "Timetable", href: "/lms/timetable", icon: CalendarClock },
         { label: "LMS Analytics", href: "/lms/analytics", icon: TrendingUp },
+      ],
+    },
+    {
+      title: "Payments",
+      items: [
+        { label: "Fee Configs", href: "/lms/fees", icon: CreditCard },
+        { label: "Payment Tracking", href: "/lms/payments", icon: Receipt },
       ],
     },
     {

@@ -12,6 +12,7 @@ import StudentTimetable from "./pages/StudentTimetable";
 import StudentAttendance from "./pages/StudentAttendance";
 import Settings from "./pages/Settings";
 import StudentLayout from "./pages/StudentLayout";
+import Payments from "./pages/Payments";
 
 export default function App() {
   const [authed, setAuthed] = useState(!!getToken());
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/login" element={<StudentLogin onLogin={() => setAuthed(true)} />} />
         <Route path="/" element={authed ? <StudentLayout onLogout={() => setAuthed(false)} /> : <Navigate to="/login" replace />}>
           <Route index element={<StudentDashboard />} />
+          <Route path="payments" element={<Payments />} />
           <Route path="course/:id" element={<CourseViewer />} />
           <Route path="assessments" element={<Assessments />} />
           <Route path="grades" element={<GradesView />} />

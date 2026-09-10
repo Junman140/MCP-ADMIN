@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { BookOpen, ClipboardList, Award, MessageSquare, CalendarClock, QrCode, Bell, LogOut, LayoutDashboard, Settings2 } from "lucide-react";
+import { BookOpen, ClipboardList, Award, MessageSquare, CalendarClock, QrCode, Bell, LogOut, LayoutDashboard, Settings2, CreditCard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -18,6 +18,7 @@ export default function StudentLayout({ onLogout }: { onLogout: () => void }) {
 
   const links = [
     { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/payments", icon: CreditCard, label: "Payments" },
     { href: "/assessments", icon: ClipboardList, label: "Assessments" },
     { href: "/grades", icon: Award, label: "Grades" },
     { href: "/forums", icon: MessageSquare, label: "Forums" },
