@@ -4,7 +4,32 @@ import { api } from "../api";
 import { Play, FileText, FileImage, CheckCircle } from "lucide-react";
 
 type Module = { id: string; title: string; order: number };
-type ContentItem = { id: string; type: string; title: string; minioKey?: string; duration?: number; description?: string };
+type ContentItem = { id: string; type: string; title: string; url?: string; minioKey?: string; duration?: number; description?: string; body?: string };
+
+/** Convert a video URL into an embeddable form (YouTube, etc.). */
+function toEmbedUrl(raw?: string): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = u.searchParams.get("v");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (host === "youtu.be") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (host === "vimeo.com") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+    // Already an embed or unknown host: use as-is inside an iframe.
+    return raw;
+  } catch {
+    return null;
+  }
+}
 type Progress = { id: string; completedItemIds: string[]; completionPercentage: number };
 
 export default function CourseViewer() {
@@ -93,29 +118,36 @@ export default function CourseViewer() {
         {selectedItem ? (
           <div>
             <h1 className="text-xl font-bold mb-3">{selectedItem.title}</h1>
-            {selectedItem.type === "video" && (
-              <div className="bg-black rounded-lg aspect-video">
-                <video className="w-full h-full" controls playsInline crossOrigin="anonymous"
-                  src={selectedItem.minioKey ? `/hls/${selectedItem.minioKey}` : undefined}
-                  poster={selectedItem.minioKey ? `/hls/${selectedItem.minioKey.replace(/\.m3u8$/, ".jpg")}` : undefined}>
-                </video>
-              </div>
-            )}
-            {selectedItem.type === "pdf" && (
-              selectedItem.minioKey ? (
-                <iframe src={`/hls/${selectedItem.minioKey}`} className="w-full h-[70vh] rounded-lg border" title="PDF Viewer" />
-              ) : (
-                <p className="text-slate-500">No PDF file attached.</p>
-              )
-            )}
-            {selectedItem.type === "slide" && selectedItem.minioKey && (
-              <div className="space-y-4">
-                <img src={`/hls/${selectedItem.minioKey}`} alt={selectedItem.title} className="w-full rounded-lg" />
-              </div>
-            )}
-            {selectedItem.type === "text" && <div className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: selectedItem.description || "No content." }} />}
-            {selectedItem.type === "url" && selectedItem.minioKey && (
-              <a href={selectedItem.minioKey} target="_blank" rel="noopener" className="text-sky-500 underline break-all">Open external resource</a>
+            {selectedItem.type === "video" && (() => {
+              const embed = selectedItem.minioKey
+                ? `/hls/${selectedItem.minioKey}`
+                : toEmbedUrl(selectedItem.url);
+              if (!embed) return <p className="text-slate-500">No video source attached.</p>;
+              return (
+                <div className="bg-black rounded-lg aspect-video overflow-hidden">
+                  <iframe
+                    className="w-full h-full"
+                    src={embed}
+                    title={selectedItem.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              );
+            })()}
+            {selectedItem.type === "pdf" && (() => {
+              const src = selectedItem.minioKey ? `/hls/${selectedItem.minioKey}` : selectedItem.url;
+              if (!src) return <p className="text-slate-500">No PDF file attached.</p>;
+              return <iframe src={src} className="w-full h-[70vh] rounded-lg border" title="PDF Viewer" />;
+            })()}
+            {selectedItem.type === "slide" && (() => {
+              const src = selectedItem.minioKey ? `/hls/${selectedItem.minioKey}` : selectedItem.url;
+              if (!src) return <p className="text-slate-500">No slide attached.</p>;
+              return <img src={src} alt={selectedItem.title} className="w-full rounded-lg" />;
+            })()}
+            {selectedItem.type === "text" && <div className="prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: selectedItem.description || selectedItem.body || "No content." }} />}
+            {(selectedItem.type === "link" || selectedItem.type === "url") && selectedItem.url && (
+              <a href={selectedItem.url} target="_blank" rel="noopener" className="text-sky-500 underline break-all">Open external resource</a>
             )}
           </div>
         ) : (
