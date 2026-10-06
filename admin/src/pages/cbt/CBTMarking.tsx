@@ -54,7 +54,8 @@ export default function CBTMarking() {
   const [err, setErr] = useState("");
 
   const [gradingId, setGradingId] = useState<string | null>(null);
-  const [gradeScore, setGradeScore] = useState<number>(0);
+  const [gradingSub, setGradingSub] = useState<Submission | null>(null);
+  const [perQuestionScores, setPerQuestionScores] = useState<Record<string, number>>({});
   const [gradeFeedback, setGradeFeedback] = useState<string>("");
   const [aiGradingId, setAiGradingId] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<AIGradeResult | null>(null);
@@ -86,21 +87,30 @@ export default function CBTMarking() {
 
   async function openGrade(s: Submission) {
     setGradingId(s.id);
-    setGradeScore(s.grade?.total_score ?? 0);
+    setGradingSub(s);
+    setPerQuestionScores(s.grade?.per_question ?? {});
     setGradeFeedback(s.grade?.feedback ?? "");
+  }
+
+  function setPerQScore(qid: string, v: number) {
+    setPerQuestionScores((prev) => ({ ...prev, [qid]: v }));
   }
 
   async function saveGrade() {
     if (!gradingId) return;
+    // Total = sum of per-question scores (MCQ auto + manual essay). The backend
+    // treats total_score as an absolute override, so we send the computed sum.
+    const total = Object.values(perQuestionScores).reduce((a, b) => a + (Number(b) || 0), 0);
     await apiCBT(`/submissions/${gradingId}/grade`, {
       method: "PATCH",
       body: JSON.stringify({
-        total_score: Number(gradeScore) || 0,
+        total_score: total,
         feedback: gradeFeedback,
-        per_question: {},
+        per_question: perQuestionScores,
       }),
     });
     setGradingId(null);
+    setGradingSub(null);
     setGradeFeedback("");
     if (assessmentId) await loadSubmissions(assessmentId);
   }
@@ -340,32 +350,72 @@ export default function CBTMarking() {
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-slate-500 text-sm py-4">No answers in this submission.</p>
-          )}
-        </div>
-      )}
+           ) : (
+             <p className="text-slate-500 text-sm py-4">No answers in this submission.</p>
+           )}
+
+           {viewSubmission.file_uploads && viewSubmission.file_uploads.length > 0 && (
+             <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+               <div className="text-xs font-medium text-slate-500 mb-2">Uploaded Files</div>
+               <div className="space-y-1">
+                 {viewSubmission.file_uploads.map((f, i) => (
+                   <div key={i} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                     <span className="text-xs text-slate-400 font-mono">{f.question_id}</span>
+                     <span className="truncate">{f.file_name}</span>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
+         </div>
+       )}
 
       {/* Manual Grade Panel */}
-      {gradingId ? (
+      {gradingId && gradingSub ? (
         <div className="card">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold mb-1">Apply Grade</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">This sets the submission status to GRADED.</p>
+              <h2 className="text-lg font-bold mb-1">Apply Grade — {gradingSub.student_id}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Enter a score per question. Total is computed automatically.</p>
             </div>
-            <button type="button" className="secondary" onClick={() => setGradingId(null)}>
+            <button type="button" className="secondary" onClick={() => { setGradingId(null); setGradingSub(null); }}>
               Close
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div className="space-y-2 mt-4 max-h-[420px] overflow-y-auto">
+            {(gradingSub.answers && gradingSub.answers.length > 0 ? gradingSub.answers : []).map((ans, i) => (
+              <div key={i} className="flex items-center gap-3 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
+                <span className="text-xs font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded whitespace-nowrap">Q{i + 1}</span>
+                <span className="text-xs text-slate-500 font-mono truncate flex-1">{ans.question_id}</span>
+                <span className="text-xs text-slate-400 whitespace-nowrap">
+                  {ans.essay_text ? "Essay" : ans.selected_option_id ? "MCQ" : "—"}
+                </span>
+                <label className="text-xs text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                  Score
+                  <input
+                    type="number"
+                    className="input h-8 w-20 text-sm"
+                    value={perQuestionScores[ans.question_id] ?? 0}
+                    onChange={(e) => setPerQScore(ans.question_id, Number(e.target.value))}
+                  />
+                </label>
+              </div>
+            ))}
+            {(!gradingSub.answers || gradingSub.answers.length === 0) && (
+              <p className="text-sm text-slate-400 italic">No answers in this submission.</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
             <div>
-              <label>Total Score</label>
-              <input type="number" value={gradeScore} onChange={(e) => setGradeScore(Number(e.target.value))} />
+              <label className="text-xs text-slate-500 block mb-1">Total Score (auto-summed)</label>
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                {Object.values(perQuestionScores).reduce((a, b) => a + (Number(b) || 0), 0)}
+              </div>
             </div>
-            <div>
-              <label>Feedback</label>
+            <div className="flex-1 max-w-sm ml-4">
+              <label className="text-xs text-slate-500 block mb-1">Feedback</label>
               <input value={gradeFeedback} onChange={(e) => setGradeFeedback(e.target.value)} placeholder="Optional notes to student" />
             </div>
           </div>
