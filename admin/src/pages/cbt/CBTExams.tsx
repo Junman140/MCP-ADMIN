@@ -1,16 +1,34 @@
 import { useEffect, useState } from "react";
 import { api, apiCBT } from "../../api";
-import { Download, Plus, PenSquare, Trash2, Filter, X } from "lucide-react";
+import { Download, Plus, PenSquare, Trash2, Filter, X, Copy, Layers } from "lucide-react";
 
 type AssessmentType = "exam" | "test" | "assignment";
 type QuestionType = "mcq" | "essay" | "file_upload";
+
+interface Section {
+  sec_id: string;
+  title: string;
+  description?: string;
+  duration_minutes?: number;
+  shuffle_questions?: boolean;
+  order: number;
+  questions: any[];
+}
+
+interface Stream {
+  str_id: string;
+  name: string;
+  sections: Section[];
+}
 
 interface Exam {
   id: string;
   type?: AssessmentType;
   rules?: { is_proctored: boolean; max_attempts: number };
   metadata: { title: string; duration_minutes: number; shuffle_questions?: boolean; shuffle_options?: boolean };
-  questions: any[];
+  questions?: any[];
+  sections?: Section[];
+  streams?: Stream[];
   course_id?: string;
   course_name?: string;
   faculty_id?: string;
@@ -28,6 +46,19 @@ interface Course { id: string; code: string; title: string; departmentId?: strin
 
 const LEVELS = ["100", "200", "300", "400", "500", "600", "700", "Spill"];
 const SEMESTERS = ["First", "Second"];
+
+function totalQuestions(e: Exam): number {
+  if (e.streams?.length) return e.streams.reduce((a, s) => a + s.sections.reduce((b, sec) => b + sec.questions.length, 0), 0);
+  if (e.sections?.length) return e.sections.reduce((a, sec) => a + sec.questions.length, 0);
+  return e.questions?.length || 0;
+}
+
+function defaultSection(order = 0): Section {
+  return { sec_id: `sec-${Date.now()}-${order}`, title: `Section ${order + 1}`, order, questions: [] };
+}
+function defaultStream(name = "Stream A"): Stream {
+  return { str_id: `str-${Date.now()}`, name, sections: [defaultSection(0)] };
+}
 
 export default function CBTExams() {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -47,7 +78,9 @@ export default function CBTExams() {
   const [draftDepartmentId, setDraftDepartmentId] = useState("");
   const [draftLevel, setDraftLevel] = useState("");
   const [draftSemester, setDraftSemester] = useState("");
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [streams, setStreams] = useState<Stream[]>([defaultStream()]);
+  const [activeStreamIdx, setActiveStreamIdx] = useState(0);
+  const [activeSectionIdx, setActiveSectionIdx] = useState(0);
 
   // Filters for list
   const [filterCourseId, setFilterCourseId] = useState("");
@@ -90,6 +123,16 @@ export default function CBTExams() {
   useEffect(() => { loadCatalog(); }, []);
   useEffect(() => { load(); }, [filterCourseId, filterFacultyId, filterDepartmentId, filterLevel]);
 
+  // --- Section / Stream helpers ---
+  function updateActiveSectionQuestions(updater: (qs: any[]) => any[]) {
+    setStreams(prev => {
+      const next = prev.map(s => ({ ...s, sections: s.sections.map(sec => ({ ...sec, questions: [...sec.questions] })) }));
+      const sec = next[activeStreamIdx].sections[activeSectionIdx];
+      sec.questions = updater(sec.questions);
+      return next;
+    });
+  }
+
   function addQuestion(type: QuestionType) {
     const q: any = { q_id: `q-${Date.now()}`, type, content: "", points: 1 };
     if (type === "mcq") {
@@ -103,7 +146,48 @@ export default function CBTExams() {
     } else if (type === "file_upload") {
       q.file_upload = { max_bytes: 10485760, max_files: 1, allowed_mime_types: [] };
     }
-    setQuestions([...questions, q]);
+    updateActiveSectionQuestions(qs => [...qs, q]);
+  }
+
+  function addSection() {
+    setStreams(prev => {
+      const next = prev.map(s => ({ ...s, sections: [...s.sections] }));
+      const st = next[activeStreamIdx];
+      st.sections.push(defaultSection(st.sections.length));
+      return next;
+    });
+    setActiveSectionIdx(streams[activeStreamIdx].sections.length);
+  }
+
+  function removeSection(idx: number) {
+    setStreams(prev => {
+      const next = prev.map(s => ({ ...s, sections: s.sections.filter((_, i) => i !== idx) }));
+      if (next[activeStreamIdx].sections.length === 0) next[activeStreamIdx].sections = [defaultSection(0)];
+      return next;
+    });
+    setActiveSectionIdx(0);
+  }
+
+  function addStream() {
+    setStreams(prev => [...prev, defaultStream(`Stream ${String.fromCharCode(65 + prev.length)}`)]);
+    setActiveStreamIdx(streams.length);
+    setActiveSectionIdx(0);
+  }
+
+  function duplicateStream(idx: number) {
+    setStreams(prev => {
+      const src = prev[idx];
+      const copy: Stream = {
+        str_id: `str-${Date.now()}`,
+        name: `${src.name} (copy)`,
+        sections: src.sections.map((sec, si) => ({
+          ...sec,
+          sec_id: `sec-${Date.now()}-${si}`,
+          questions: sec.questions.map(q => ({ ...q, q_id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` })),
+        })),
+      };
+      return [...prev, copy];
+    });
   }
 
   function getSelectedCourse(): Course | undefined {
@@ -121,30 +205,46 @@ export default function CBTExams() {
       const selDept = departments.find(d => d.id === draftDepartmentId);
       const selFac = faculties.find(f => f.id === draftFacultyId);
 
+      const finalStreams = streams.map((s, si) => ({
+        ...s,
+        sections: s.sections.map((sec, sei) => ({ ...sec, order: sei })),
+      }));
+
+      const payload: any = {
+        type: draftType,
+        rules: { is_proctored: draftIsProctored, max_attempts: Math.max(1, Number(draftMaxAttempts) || 1) },
+        metadata: {
+          title: defaultTitle,
+          duration_minutes: Math.max(1, Number(draftDuration) || 60),
+          shuffle_questions: true,
+          shuffle_options: true,
+        },
+        course_id: draftCourseId || undefined,
+        course_name: selCourse ? `${selCourse.code} - ${selCourse.title}` : undefined,
+        faculty_id: draftFacultyId || undefined,
+        faculty_name: selFac?.name || undefined,
+        department_id: draftDepartmentId || undefined,
+        department_name: selDept?.name || undefined,
+        level: draftLevel || undefined,
+        semester: draftSemester || undefined,
+      };
+
+      if (finalStreams.length > 1) {
+        payload.streams = finalStreams;
+      } else if (finalStreams[0].sections.length > 0) {
+        payload.sections = finalStreams[0].sections;
+      } else {
+        payload.questions = [];
+      }
+
       await apiCBT("/exams", {
         method: "POST",
-        body: JSON.stringify({
-          type: draftType,
-          rules: { is_proctored: draftIsProctored, max_attempts: Math.max(1, Number(draftMaxAttempts) || 1) },
-          metadata: {
-            title: defaultTitle,
-            duration_minutes: Math.max(1, Number(draftDuration) || 60),
-            shuffle_questions: true,
-            shuffle_options: true,
-          },
-          course_id: draftCourseId || undefined,
-          course_name: selCourse ? `${selCourse.code} - ${selCourse.title}` : undefined,
-          faculty_id: draftFacultyId || undefined,
-          faculty_name: selFac?.name || undefined,
-          department_id: draftDepartmentId || undefined,
-          department_name: selDept?.name || undefined,
-          level: draftLevel || undefined,
-          semester: draftSemester || undefined,
-          questions,
-        }),
+        body: JSON.stringify(payload),
       });
       setDraftTitle("");
-      setQuestions([]);
+      setStreams([defaultStream()]);
+      setActiveStreamIdx(0);
+      setActiveSectionIdx(0);
       load();
     } catch (e) {
       alert(String(e));
@@ -159,13 +259,16 @@ export default function CBTExams() {
   }
 
   const hasFilters = filterCourseId || filterFacultyId || filterDepartmentId || filterLevel;
+  const activeStream = streams[activeStreamIdx];
+  const activeSection = activeStream?.sections[activeSectionIdx];
+  const questions = activeSection?.questions || [];
 
   return (
     <>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">CBT Management</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Manage exam payloads with academic scoping (course, department, level).</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Manage exam payloads with sections and streams (variants), with academic scoping.</p>
         </div>
       </div>
 
@@ -255,10 +358,61 @@ export default function CBTExams() {
           </div>
         </div>
 
-        {/* Questions Builder */}
+        {/* Streams / Sections / Questions Builder */}
         <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5" /> Streams (variants)
+            </span>
+            <button type="button" className="secondary text-xs" onClick={addStream}>+ Add Stream</button>
+          </div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {streams.map((s, i) => (
+              <div key={s.str_id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${i === activeStreamIdx ? "border-sky-500 bg-sky-50 dark:bg-sky-950/30" : "border-slate-200 dark:border-slate-700"}`}>
+                <button type="button" onClick={() => { setActiveStreamIdx(i); setActiveSectionIdx(0); }} className="font-medium">{s.name}</button>
+                <button type="button" className="text-slate-400 hover:text-sky-500" title="Duplicate variant" onClick={() => duplicateStream(i)}><Copy className="w-3 h-3" /></button>
+                {streams.length > 1 && (
+                  <button type="button" className="text-red-400 hover:text-red-600" onClick={() => { const n = streams.filter((_, x) => x !== i); setStreams(n); setActiveStreamIdx(Math.min(activeStreamIdx, n.length - 1)); setActiveSectionIdx(0); }}><Trash2 className="w-3 h-3" /></button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mb-2 mt-3">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Sections</span>
+            <button type="button" className="secondary text-xs" onClick={addSection}>+ Add Section</button>
+          </div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {activeStream.sections.map((sec, i) => (
+              <div key={sec.sec_id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${i === activeSectionIdx ? "border-sky-500 bg-sky-50 dark:bg-sky-950/30" : "border-slate-200 dark:border-slate-700"}`}>
+                <button type="button" onClick={() => setActiveSectionIdx(i)} className="font-medium">{sec.title} ({sec.questions.length})</button>
+                {activeStream.sections.length > 1 && (
+                  <button type="button" className="text-red-400 hover:text-red-600" onClick={() => removeSection(i)}><Trash2 className="w-3 h-3" /></button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <label className="text-xs text-slate-500 flex flex-col gap-1">
+              Section title
+              <input className="input h-8 text-sm" value={activeSection.title} onChange={(e) => { const n = streams.map(s => ({ ...s, sections: s.sections.map(x => ({ ...x })) })); n[activeStreamIdx].sections[activeSectionIdx].title = e.target.value; setStreams(n); }} />
+            </label>
+            <label className="text-xs text-slate-500 flex flex-col gap-1">
+              Section time (mins, 0=exam)
+              <input className="input h-8 text-sm" type="number" min={0} value={activeSection.duration_minutes || 0} onChange={(e) => { const n = streams.map(s => ({ ...s, sections: s.sections.map(x => ({ ...x })) })); n[activeStreamIdx].sections[activeSectionIdx].duration_minutes = Number(e.target.value); setStreams(n); }} />
+            </label>
+            <label className="text-xs text-slate-500 flex flex-col gap-1">
+              Shuffle in section
+              <select className="input h-8 text-sm" value={activeSection.shuffle_questions ? "yes" : "no"} onChange={(e) => { const n = streams.map(s => ({ ...s, sections: s.sections.map(x => ({ ...x })) })); n[activeStreamIdx].sections[activeSectionIdx].shuffle_questions = e.target.value === "yes"; setStreams(n); }}>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+          </div>
+
           <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{questions.length} question(s)</span>
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{questions.length} question(s) in this section</span>
             <div className="flex gap-2">
               <button type="button" className="secondary text-xs" onClick={() => addQuestion("mcq")}>+ MCQ</button>
               <button type="button" className="secondary text-xs" onClick={() => addQuestion("essay")}>+ Essay</button>
@@ -270,32 +424,32 @@ export default function CBTExams() {
             <div key={q.q_id} className="p-4 border rounded-xl border-slate-200 dark:border-slate-800 mb-3">
               <div className="flex justify-between items-start mb-2">
                 <span className="text-xs font-bold uppercase text-slate-500">{q.type}</span>
-                <button type="button" className="text-red-500 hover:text-red-600" onClick={() => setQuestions(questions.filter(x => x.q_id !== q.q_id))}>
+                <button type="button" className="text-red-500 hover:text-red-600" onClick={() => updateActiveSectionQuestions(qs => qs.filter(x => x.q_id !== q.q_id))}>
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <input className="input mb-2" placeholder="Question text (Markdown/LaTeX OK)" value={q.content} onChange={(e) => { const n = [...questions]; n[i].content = e.target.value; setQuestions(n); }} />
+              <input className="input mb-2" placeholder="Question text (Markdown/LaTeX OK)" value={q.content} onChange={(e) => updateActiveSectionQuestions(qs => { const n = [...qs]; n[i].content = e.target.value; return n; })} />
               {q.type === "mcq" && (
                 <div className="pl-4 border-l-2 border-slate-100 dark:border-slate-800 space-y-2">
                   {q.options.map((opt: any, oi: number) => (
                     <div key={opt.opt_id} className="flex gap-2 items-center">
-                      <input type="radio" name={`correct-${q.q_id}`} checked={q.correct_opt_id === opt.opt_id} onChange={() => { const n = [...questions]; n[i].correct_opt_id = opt.opt_id; setQuestions(n); }} />
-                      <input className="input h-8 text-sm" value={opt.text} onChange={(e) => { const n = [...questions]; n[i].options[oi].text = e.target.value; setQuestions(n); }} />
+                      <input type="radio" name={`correct-${q.q_id}`} checked={q.correct_opt_id === opt.opt_id} onChange={() => updateActiveSectionQuestions(qs => { const n = [...qs]; n[i].correct_opt_id = opt.opt_id; return n; })} />
+                      <input className="input h-8 text-sm" value={opt.text} onChange={(e) => updateActiveSectionQuestions(qs => { const n = [...qs]; n[i].options[oi].text = e.target.value; return n; })} />
                     </div>
                   ))}
-                  <button type="button" className="text-xs text-sky-500" onClick={() => { const n = [...questions]; n[i].options.push({ opt_id: `opt-${Date.now()}`, text: "New Option" }); setQuestions(n); }}>+ Add option</button>
+                  <button type="button" className="text-xs text-sky-500" onClick={() => updateActiveSectionQuestions(qs => { const n = [...qs]; n[i].options.push({ opt_id: `opt-${Date.now()}`, text: "New Option" }); return n; })}>+ Add option</button>
                 </div>
               )}
               {q.type === "essay" && (
                 <div className="flex items-center gap-2 mt-2">
                   <label className="text-xs text-slate-500">Word limit:</label>
-                  <input type="number" className="input h-8 w-24 text-sm" value={q.word_limit} onChange={(e) => { const n = [...questions]; n[i].word_limit = Number(e.target.value); setQuestions(n); }} />
+                  <input type="number" className="input h-8 w-24 text-sm" value={q.word_limit} onChange={(e) => updateActiveSectionQuestions(qs => { const n = [...qs]; n[i].word_limit = Number(e.target.value); return n; })} />
                 </div>
               )}
               {q.type === "file_upload" && (
                 <div className="flex items-center gap-2 mt-2">
                   <label className="text-xs text-slate-500">Max files:</label>
-                  <input type="number" className="input h-8 w-24 text-sm" value={q.file_upload.max_files} onChange={(e) => { const n = [...questions]; n[i].file_upload.max_files = Number(e.target.value); setQuestions(n); }} />
+                  <input type="number" className="input h-8 w-24 text-sm" value={q.file_upload.max_files} onChange={(e) => updateActiveSectionQuestions(qs => { const n = [...qs]; n[i].file_upload.max_files = Number(e.target.value); return n; })} />
                 </div>
               )}
             </div>
@@ -377,7 +531,7 @@ export default function CBTExams() {
                     </td>
                     <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                        {x.questions?.length || 0} Qs
+                        {totalQuestions(x)} Qs{totalQuestions(x) > 0 && (x.sections?.length || x.streams?.length) ? ` · ${(x.streams?.length || 1)} stream(s)` : ""}
                       </span>
                     </td>
                     <td className="py-3 px-4 flex justify-end">
