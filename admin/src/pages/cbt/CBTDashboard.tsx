@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { apiCBT } from "../../api";
+import { apiCBT, getToken } from "../../api";
 import { Users, FileText, CheckCircle, AlertCircle, Radio, Focus, AlertTriangle, Activity, Wifi, WifiOff } from "lucide-react";
 
 interface Stats {
@@ -53,7 +53,9 @@ export default function CBTDashboard() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const query = examFilter ? `?exam_id=${encodeURIComponent(examFilter)}` : "";
-    const url = `${protocol}//${host}/cbt-api/telemetry/stream${query}`;
+    const token = getToken();
+    const tokenQS = token ? `${query ? "&" : "?"}token=${encodeURIComponent(token)}` : "";
+    const url = `${protocol}//${host}/cbt-api/telemetry/stream${query}${tokenQS}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
