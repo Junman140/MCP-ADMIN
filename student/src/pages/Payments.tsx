@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { CreditCard, Download, AlertCircle, CheckCircle2, Clock, XCircle, RefreshCw } from "lucide-react";
+import { Download, AlertCircle, CheckCircle2, Clock, XCircle, RefreshCw, CreditCard } from "lucide-react";
+import { Badge, Button, Card, PageHeader, Tabs } from "@bio/ui";
 
 interface FeeConfig {
   id: string;
@@ -40,7 +41,7 @@ interface PaymentSummary {
   }>;
 }
 
-const STATUS_ICONS: Record<string, React.ComponentType<any>> = {
+const STATUS_ICONS: Record<string, any> = {
   AWAITING_PAYMENT: Clock,
   COLLECTED: CheckCircle2,
   REMITTING: RefreshCw,
@@ -50,15 +51,26 @@ const STATUS_ICONS: Record<string, React.ComponentType<any>> = {
   EXPIRED: XCircle,
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  AWAITING_PAYMENT: "text-amber-600 bg-amber-50",
-  COLLECTED: "text-blue-600 bg-blue-50",
-  REMITTING: "text-purple-600 bg-purple-50",
-  REMITTED: "text-green-600 bg-green-50",
-  COMPLETE: "text-green-700 bg-green-100",
-  FAILED: "text-red-600 bg-red-50",
-  EXPIRED: "text-gray-600 bg-gray-100",
+const STATUS_TONE: Record<string, "amber" | "green" | "red"> = {
+  AWAITING_PAYMENT: "amber",
+  COLLECTED: "green",
+  REMITTING: "green",
+  REMITTED: "green",
+  COMPLETE: "green",
+  FAILED: "red",
+  EXPIRED: "red",
 };
+
+function StatusBadge({ status }: { status: string }) {
+  const Icon = STATUS_ICONS[status] || AlertCircle;
+  const tone = STATUS_TONE[status] || "amber";
+  return (
+    <Badge tone={tone}>
+      <Icon className="mr-1 h-3 w-3" />
+      {status}
+    </Badge>
+  );
+}
 
 export default function Payments() {
   const [tab, setTab] = useState<"overview" | "invoices" | "new">("overview");
@@ -86,7 +98,9 @@ export default function Payments() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const generateInvoice = async (feeType: string) => {
     setLoading(true);
@@ -127,182 +141,173 @@ export default function Payments() {
   };
 
   if (loading && !summary) {
-    return <div className="text-center py-12 text-slate-500">Loading payments...</div>;
+    return <p className="py-12 text-center text-[var(--bio-muted)]">Loading payments…</p>;
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Payments</h1>
+      <PageHeader title="Payments" subtitle="View balances, pay fees, and download receipts." />
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />{error}
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+          <AlertCircle className="h-4 w-4" />
+          {error}
         </div>
       )}
 
-      <div className="flex gap-2 mb-6 border-b border-slate-200 pb-3">
-        {(["overview", "invoices", "new"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => { setTab(t); setInvoiceResult(null); }}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              tab === t ? "bg-sky-50 text-sky-700 border-b-2 border-sky-600" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {t === "overview" ? "Overview" : t === "invoices" ? "My Invoices" : "Pay Fee"}
-          </button>
-        ))}
-      </div>
+      <Tabs<"overview" | "invoices" | "new">
+        tabs={[
+          { id: "overview", label: "Overview" },
+          { id: "invoices", label: "My Invoices" },
+          { id: "new", label: "Pay Fee" },
+        ]}
+        active={tab}
+        onChange={(t) => {
+          setTab(t);
+          setInvoiceResult(null);
+        }}
+      />
 
       {invoiceResult && (
-        <div className="card mb-6 border-2 border-green-200 bg-green-50">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
-            <h3 className="font-bold text-green-800">Invoice Generated</h3>
+        <Card className="mt-6 border-2 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <h3 className="font-bold text-emerald-800 dark:text-emerald-300">Invoice Generated</h3>
           </div>
           <div className="space-y-2 text-sm">
             <div className="grid grid-cols-2 gap-2">
-              <div><span className="text-slate-500">Bank:</span> <strong>{invoiceResult.virtualAccountBank}</strong></div>
-              <div><span className="text-slate-500">Status:</span> <strong>{invoiceResult.status}</strong></div>
+              <div><span className="text-[var(--bio-muted)]">Bank:</span> <strong>{invoiceResult.virtualAccountBank}</strong></div>
+              <div><span className="text-[var(--bio-muted)]">Status:</span> <strong>{invoiceResult.status}</strong></div>
             </div>
-            <div className="p-3 bg-white rounded-lg border border-green-200">
-              <p className="text-xs text-slate-500 mb-1">Virtual Account Number</p>
-              <p className="text-2xl font-mono font-bold text-slate-900 tracking-wider">{invoiceResult.virtualAccountNumber}</p>
+            <div className="rounded-lg border border-emerald-200 bg-white p-3 dark:bg-slate-900">
+              <p className="mb-1 text-xs text-[var(--bio-muted)]">Virtual Account Number</p>
+              <p className="font-mono text-2xl font-bold tracking-wider text-slate-900 dark:text-white">
+                {invoiceResult.virtualAccountNumber}
+              </p>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Pay the total of <strong>₦{invoiceResult.totalAmount.toLocaleString()}</strong> (Fee: ₦{invoiceResult.amount.toLocaleString()} + Processing: ₦{invoiceResult.serviceFee.toLocaleString()}) to the account above via your bank app, USSD, OPay or POS. Payment will be confirmed automatically.
+            <p className="mt-2 text-xs text-[var(--bio-muted)]">
+              Pay the total of <strong>₦{invoiceResult.totalAmount.toLocaleString()}</strong> (Fee: ₦
+              {invoiceResult.amount.toLocaleString()} + Processing: ₦{invoiceResult.serviceFee.toLocaleString()}) to the
+              account above. Payment is confirmed automatically.
             </p>
           </div>
-        </div>
+        </Card>
       )}
 
       {tab === "overview" && summary && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="card">
-              <div className="text-sm text-slate-500 mb-1">Total Invoices</div>
-              <div className="text-3xl font-bold text-slate-800">{summary.totalInvoices}</div>
-            </div>
-            <div className="card">
-              <div className="text-sm text-slate-500 mb-1">Completed Payments</div>
-              <div className="text-3xl font-bold text-green-600">{summary.completedPayments}</div>
-            </div>
-            <div className="card">
-              <div className="text-sm text-slate-500 mb-1">Outstanding</div>
-              <div className="text-3xl font-bold text-red-600">
+        <div className="mt-6 space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Card>
+              <p className="mb-1 text-sm text-[var(--bio-muted)]">Total Invoices</p>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white">{summary.totalInvoices}</p>
+            </Card>
+            <Card>
+              <p className="mb-1 text-sm text-[var(--bio-muted)]">Completed Payments</p>
+              <p className="text-3xl font-bold text-emerald-600">{summary.completedPayments}</p>
+            </Card>
+            <Card>
+              <p className="mb-1 text-sm text-[var(--bio-muted)]">Outstanding</p>
+              <p className="text-3xl font-bold text-rose-600">
                 ₦{Object.values(summary.outstandingBalances).reduce((s, v) => s + v, 0).toLocaleString()}
-              </div>
-            </div>
+              </p>
+            </Card>
           </div>
 
           {Object.keys(summary.outstandingBalances).length > 0 && (
-            <div className="card">
-              <h3 className="font-semibold text-slate-700 mb-3">Outstanding Balances</h3>
+            <Card>
+              <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Outstanding Balances</h3>
               {Object.entries(summary.outstandingBalances).map(([feeType, amount]) => (
-                <div key={feeType} className="flex justify-between py-2 border-b border-slate-100 last:border-0">
-                  <span className="text-sm text-slate-600 capitalize">{feeType.replace(/_/g, " ")}</span>
-                  <span className="text-sm font-bold text-red-600">₦{amount.toLocaleString()}</span>
+                <div key={feeType} className="flex justify-between border-b border-[var(--bio-border)] py-2 last:border-0">
+                  <span className="text-sm capitalize text-slate-600 dark:text-slate-300">{feeType.replace(/_/g, " ")}</span>
+                  <span className="text-sm font-bold text-rose-600">₦{amount.toLocaleString()}</span>
                 </div>
               ))}
-            </div>
+            </Card>
           )}
 
           {summary.recentPayments.length > 0 && (
-            <div className="card">
-              <h3 className="font-semibold text-slate-700 mb-3">Recent Payments</h3>
-              <div className="space-y-2">
+            <Card>
+              <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-200">Recent Payments</h3>
+              <div className="divide-y divide-[var(--bio-border)]">
                 {summary.recentPayments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between text-sm py-2 border-b border-slate-100 last:border-0">
+                  <div key={p.id} className="flex items-center justify-between py-2 text-sm">
                     <div>
-                      <div className="font-medium text-slate-700 capitalize">{p.feeType.replace(/_/g, " ")}</div>
-                      <div className="text-xs text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</div>
+                      <div className="font-medium capitalize text-slate-700 dark:text-slate-200">{p.feeType.replace(/_/g, " ")}</div>
+                      <div className="text-xs text-[var(--bio-muted)]">{new Date(p.createdAt).toLocaleDateString()}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-slate-800">₦{p.totalAmount.toLocaleString()}</div>
-                      <div className="text-xs text-slate-400">{p.receiptNumber}</div>
+                      <div className="font-bold text-slate-800 dark:text-white">₦{p.totalAmount.toLocaleString()}</div>
+                      <div className="text-xs text-[var(--bio-muted)]">{p.receiptNumber}</div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
 
       {tab === "invoices" && (
-        <div className="space-y-3">
+        <div className="mt-6 space-y-3">
           {invoices.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">No invoices yet. Go to "Pay Fee" to create one.</p>
+            <p className="py-8 text-center text-[var(--bio-muted)]">No invoices yet. Go to “Pay Fee” to create one.</p>
           ) : (
-            invoices.map((inv) => {
-              const Icon = STATUS_ICONS[inv.status] || AlertCircle;
-              const color = STATUS_COLORS[inv.status] || "";
-              return (
-                <div key={inv.id} className="card flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-                      <Icon className="w-3 h-3" />{inv.status}
-                    </span>
-                    <div>
-                      <div className="font-medium text-slate-700 capitalize">{inv.feeType.replace(/_/g, " ")}</div>
-                      <div className="text-xs text-slate-400">{new Date(inv.createdAt).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="font-bold text-slate-800">₦{inv.totalAmount.toLocaleString()}</div>
-                      <div className="text-xs text-slate-400">
-                        Fee: ₦{inv.amount.toLocaleString()} + Processing: ₦{inv.serviceFee}
-                      </div>
-                    </div>
-                    {inv.status === "AWAITING_PAYMENT" && inv.virtualAccountNumber && (
-                      <button
-                        onClick={() => {
-                          setTab("new");
-                          setInvoiceResult(inv);
-                        }}
-                        className="btn-secondary text-xs"
-                      >
-                        <CreditCard className="w-3 h-3" /> View Details
-                      </button>
-                    )}
-                    {(inv.status === "COMPLETE" || inv.status === "REMITTED") && (
-                      <button
-                        onClick={() => downloadReceipt(inv.id)}
-                        className="btn-primary text-xs flex items-center gap-1"
-                      >
-                        <Download className="w-3 h-3" /> Receipt
-                      </button>
-                    )}
+            invoices.map((inv) => (
+              <Card key={inv.id} className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={inv.status} />
+                  <div>
+                    <div className="font-medium capitalize text-slate-700 dark:text-slate-200">{inv.feeType.replace(/_/g, " ")}</div>
+                    <div className="text-xs text-[var(--bio-muted)]">{new Date(inv.createdAt).toLocaleDateString()}</div>
                   </div>
                 </div>
-              );
-            })
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="font-bold text-slate-800 dark:text-white">₦{inv.totalAmount.toLocaleString()}</div>
+                    <div className="text-xs text-[var(--bio-muted)]">Fee: ₦{inv.amount.toLocaleString()} + ₦{inv.serviceFee} processing</div>
+                  </div>
+                  {inv.status === "AWAITING_PAYMENT" && inv.virtualAccountNumber && (
+                    <Button variant="secondary" className="text-xs" onClick={() => { setTab("new"); setInvoiceResult(inv); }}>
+                      <CreditCard className="h-3 w-3" /> View Details
+                    </Button>
+                  )}
+                  {(inv.status === "COMPLETE" || inv.status === "REMITTED") && (
+                    <Button variant="primary" className="text-xs" onClick={() => downloadReceipt(inv.id)}>
+                      <Download className="h-3 w-3" /> Receipt
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))
           )}
         </div>
       )}
 
       {tab === "new" && (
-        <div className="max-w-md mx-auto space-y-4">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4">Create Payment Invoice</h2>
+        <div className="mx-auto mt-6 max-w-md space-y-4">
+          <h2 className="mb-4 text-lg font-semibold text-slate-700 dark:text-slate-200">Create Payment Invoice</h2>
           {feeConfigs.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">No fee configurations available. Contact administrator.</p>
+            <p className="py-8 text-center text-[var(--bio-muted)]">No fee configurations available. Contact administrator.</p>
           ) : (
             feeConfigs.map((cfg) => (
               <button
                 key={cfg.id}
                 onClick={() => generateInvoice(cfg.feeType)}
                 disabled={loading}
-                className="card w-full text-left hover:border-sky-300 hover:shadow-md transition-all flex justify-between items-center"
+                className="card w-full text-left transition-all hover:border-brand-300 hover:shadow-pop disabled:opacity-50"
               >
-                <div>
-                  <div className="font-medium text-slate-700">{cfg.label}</div>
-                  <div className="text-xs text-slate-400 capitalize">{cfg.feeType.replace(/_/g, " ")}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-slate-800">₦{cfg.amount.toLocaleString()}</div>
-                  <div className="text-xs text-slate-400">+ ₦{cfg.serviceFee} processing fee</div>
-                  <div className="text-sm font-bold text-sky-600 mt-1">Pay ₦{(cfg.amount + cfg.serviceFee).toLocaleString()}</div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-slate-700 dark:text-slate-200">{cfg.label}</div>
+                    <div className="text-xs capitalize text-[var(--bio-muted)]">{cfg.feeType.replace(/_/g, " ")}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-slate-800 dark:text-white">₦{cfg.amount.toLocaleString()}</div>
+                    <div className="text-xs text-[var(--bio-muted)]">+ ₦{cfg.serviceFee} processing</div>
+                    <div className="mt-1 text-sm font-bold text-brand-600 dark:text-brand-400">
+                      Pay ₦{(cfg.amount + cfg.serviceFee).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
               </button>
             ))

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, getUser } from "../api";
+import { api } from "../api";
 import { FileText, Clock, Upload, Loader2 } from "lucide-react";
+import { Button, Card, PageHeader, Select, Tabs } from "@bio/ui";
 
 type Assignment = { id: string; courseId: string; title: string; deadline?: string; maxScore: number };
 type QuizDef = { id: string; courseId: string; title: string; timeLimit?: number; questions?: { _id: string; text: string; type: string; points: number; options?: string[] }[] };
@@ -20,12 +21,20 @@ export default function Assessments() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { api<Course[]>("/courses").then(setCourses).catch(() => {}); }, []);
+  useEffect(() => {
+    api<Course[]>("/courses")
+      .then(setCourses)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (selectedCourse) {
-      api<Assignment[]>(`/assignments?courseId=${selectedCourse}`).then(setAssignments).catch(() => {});
-      api<QuizDef[]>(`/quizzes?courseId=${selectedCourse}`).then(setQuizzes).catch(() => {});
+      api<Assignment[]>(`/assignments?courseId=${selectedCourse}`)
+        .then(setAssignments)
+        .catch(() => {});
+      api<QuizDef[]>(`/quizzes?courseId=${selectedCourse}`)
+        .then(setQuizzes)
+        .catch(() => {});
     }
   }, [selectedCourse]);
 
@@ -59,103 +68,140 @@ export default function Assessments() {
   if (quizAttempt && activeQuiz) {
     const questions = activeQuiz.questions ?? [];
     return (
-      <div className="space-y-4 max-w-4xl">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">{activeQuiz.title}</h1>
-          <span className="text-sm text-slate-500">{questions.length} questions</span>
+      <div className="max-w-4xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{activeQuiz.title}</h1>
+          <span className="text-sm text-[var(--bio-muted)]">{questions.length} questions</span>
         </div>
         {questions.map((q) => (
-          <div key={q._id} className="card p-4">
-            <p className="font-semibold mb-2">{q.text}</p>
+          <Card key={q._id} className="p-4">
+            <p className="mb-2 font-semibold text-slate-800 dark:text-slate-100">{q.text}</p>
             {q.type === "multiple-choice" && q.options ? (
               q.options.map((opt, oi) => (
-                <label key={oi} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                  <input type="radio" name={q._id} checked={answers[q._id] === opt}
-                    onChange={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))} />
+                <label key={oi} className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <input
+                    type="radio"
+                    name={q._id}
+                    checked={answers[q._id] === opt}
+                    onChange={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))}
+                  />
                   <span className="text-sm">{opt}</span>
                 </label>
               ))
             ) : q.type === "true-false" ? (
-              <>
-                {["True", "False"].map((opt) => (
-                  <label key={opt} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                    <input type="radio" name={q._id} checked={answers[q._id] === opt}
-                      onChange={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))} />
-                    <span className="text-sm">{opt}</span>
-                  </label>
-                ))}
-              </>
+              ["True", "False"].map((opt) => (
+                <label key={opt} className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <input
+                    type="radio"
+                    name={q._id}
+                    checked={answers[q._id] === opt}
+                    onChange={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))}
+                  />
+                  <span className="text-sm">{opt}</span>
+                </label>
+              ))
             ) : (
-              <textarea className="input mt-2 w-full" rows={3} placeholder="Your answer..."
+              <textarea
+                className="input mt-2 w-full"
+                rows={3}
+                placeholder="Your answer…"
                 value={answers[q._id] ?? ""}
-                onChange={(e) => setAnswers((prev) => ({ ...prev, [q._id]: e.target.value }))} />
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [q._id]: e.target.value }))}
+              />
             )}
-          </div>
+          </Card>
         ))}
-        <button className="btn-primary w-full" onClick={submitQuiz} disabled={submitting}>
-          {submitting ? <Loader2 className="w-4 h-4 inline animate-spin" /> : null} Submit Quiz
-        </button>
+        <Button className="w-full" onClick={submitQuiz} disabled={submitting}>
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Submit Quiz
+        </Button>
       </div>
     );
   }
 
-  const user = getUser();
-
   return (
-    <div className="space-y-4 max-w-4xl">
-      <h1 className="text-2xl font-bold">Assessments</h1>
-      <select className="input" value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-        <option value="">Select a course...</option>
-        {courses.map((c) => <option key={c.id} value={c.id}>{c.code} - {c.title}</option>)}
-      </select>
+    <div className="max-w-4xl space-y-4">
+      <PageHeader title="Assessments" subtitle="Submit assignments and take quizzes for your courses." />
 
-      <div className="flex gap-2">
-        <button className={`px-4 py-2 rounded-lg text-sm ${tab === "assignments" ? "bg-sky-600 text-white" : "border"}`} onClick={() => setTab("assignments")}>Assignments</button>
-        <button className={`px-4 py-2 rounded-lg text-sm ${tab === "quizzes" ? "bg-sky-600 text-white" : "border"}`} onClick={() => setTab("quizzes")}>Quizzes</button>
-      </div>
+      <Select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
+        <option value="">Select a course…</option>
+        {courses.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.code} - {c.title}
+          </option>
+        ))}
+      </Select>
 
-      {tab === "assignments" && assignments.map((a) => (
-        <div key={a.id} className="card flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FileText className="w-5 h-5 text-sky-500" />
-            <div>
-              <p className="font-semibold">{a.title}</p>
-              <p className="text-sm text-slate-500">Max: {a.maxScore} | Due: {a.deadline ? new Date(a.deadline).toLocaleDateString() : "N/A"}</p>
-            </div>
-          </div>
-          <label className="btn-secondary text-sm cursor-pointer flex items-center gap-1">
-            {uploading === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {uploading === a.id ? "Uploading..." : "Submit"}
-            <input type="file" hidden onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              setUploading(a.id);
-              const form = new FormData();
-              form.append("file", file);
-              await fetch(`/api/assignments/${a.id}/submit`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                body: form,
-              });
-              setUploading(null);
-              alert("Submitted!");
-            }} />
-          </label>
-        </div>
-      ))}
+      <Tabs<"assignments" | "quizzes">
+        tabs={[
+          { id: "assignments", label: "Assignments" },
+          { id: "quizzes", label: "Quizzes" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
-      {tab === "quizzes" && quizzes.map((q) => (
-        <div key={q.id} className="card flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-amber-500" />
-            <div>
-              <p className="font-semibold">{q.title}</p>
-              <p className="text-sm text-slate-500">{q.questions?.length ?? 0} questions | {q.timeLimit ? `${q.timeLimit} min` : "No limit"}</p>
-            </div>
-          </div>
-          <button className="btn-primary text-sm" onClick={() => startQuiz(q.id)}>Start Quiz</button>
-        </div>
-      ))}
+      {tab === "assignments" &&
+        (assignments.length === 0 ? (
+          <p className="py-8 text-center text-[var(--bio-muted)]">Select a course to see assignments.</p>
+        ) : (
+          assignments.map((a) => (
+            <Card key={a.id} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-brand-500" />
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">{a.title}</p>
+                  <p className="text-sm text-[var(--bio-muted)]">
+                    Max: {a.maxScore} | Due: {a.deadline ? new Date(a.deadline).toLocaleDateString() : "N/A"}
+                  </p>
+                </div>
+              </div>
+              <label className="btn-secondary flex cursor-pointer items-center gap-1 text-sm">
+                {uploading === a.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploading === a.id ? "Uploading…" : "Submit"}
+                <input
+                  type="file"
+                  hidden
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploading(a.id);
+                    const form = new FormData();
+                    form.append("file", file);
+                    await fetch(`/api/assignments/${a.id}/submit`, {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                      body: form,
+                    });
+                    setUploading(null);
+                    alert("Submitted!");
+                  }}
+                />
+              </label>
+            </Card>
+          ))
+        ))}
+
+      {tab === "quizzes" &&
+        (quizzes.length === 0 ? (
+          <p className="py-8 text-center text-[var(--bio-muted)]">Select a course to see quizzes.</p>
+        ) : (
+          quizzes.map((q) => (
+            <Card key={q.id} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">{q.title}</p>
+                  <p className="text-sm text-[var(--bio-muted)]">
+                    {q.questions?.length ?? 0} questions | {q.timeLimit ? `${q.timeLimit} min` : "No limit"}
+                  </p>
+                </div>
+              </div>
+              <Button variant="primary" className="text-sm" onClick={() => startQuiz(q.id)}>
+                Start Quiz
+              </Button>
+            </Card>
+          ))
+        ))}
     </div>
   );
 }
