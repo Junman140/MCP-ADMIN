@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { AlertTriangle, Activity, BarChart3, Search } from "lucide-react";
+import { Badge, Button, Card, Input, PageHeader } from "@bio/ui";
 
 type AtRiskStudent = { studentId: string; studentName: string; courseId: string; riskScore: number; reason: string };
 type EngagementData = { courseId: string; attendanceRate: number; submissionRate: number; avgSessionMinutes: number };
@@ -43,95 +45,117 @@ export default function LMSAnalytics() {
       .finally(() => setLoadingDist(false));
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.875rem", width: "100%",
-  };
-  const btnStyle: React.CSSProperties = {
-    padding: "0.5rem 1rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: "0.8125rem", whiteSpace: "nowrap",
-  };
-  const cardStyle: React.CSSProperties = {
-    background: "#fff", padding: "1rem", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "1.5rem",
-  };
+  const gradeBarBg: Record<string, string> = { A: "bg-emerald-500", B: "bg-brand-500", C: "bg-amber-500", D: "bg-orange-500", F: "bg-rose-500" };
+  const gradeText: Record<string, string> = { A: "text-emerald-600 dark:text-emerald-400", B: "text-brand-600 dark:text-brand-400", C: "text-amber-600 dark:text-amber-400", D: "text-orange-600 dark:text-orange-400", F: "text-rose-600 dark:text-rose-400" };
 
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1rem" }}>LMS Analytics</h1>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.5rem 1rem", borderRadius: 6, marginBottom: "1rem", fontSize: "0.875rem" }}>{error}</div>}
+    <div className="space-y-6">
+      <PageHeader title="LMS Analytics" subtitle="At-risk students, engagement metrics, and grade distributions." />
 
-      <div style={cardStyle}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>At-Risk Students</h3>
-        {loadingRisk && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
-        {!loadingRisk && atRisk.length === 0 && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>No at-risk students identified</p>}
-        {atRisk.map((s, i) => (
-          <div key={i} style={{ padding: "0.6rem 0.75rem", borderRadius: 6, marginBottom: 4, background: s.riskScore >= 70 ? "#fef2f2" : "#fffbeb", border: "1px solid #fecaca" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <p style={{ fontWeight: 600, fontSize: "0.85rem", margin: 0 }}>{s.studentName || s.studentId}</p>
-              <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: 10, background: s.riskScore >= 70 ? "#fee2e2" : "#fef3c7", color: s.riskScore >= 70 ? "#dc2626" : "#d97706" }}>
-                Risk: {s.riskScore}%
-              </span>
+      {error && (
+        <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{error}</div>
+      )}
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <AlertTriangle className="h-4 w-4 text-amber-500" /> At-Risk Students
+        </h3>
+        {loadingRisk && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
+        {!loadingRisk && atRisk.length === 0 && <p className="text-sm text-[var(--bio-muted)]">No at-risk students identified</p>}
+        <div className="space-y-2">
+          {atRisk.map((s, i) => (
+            <div
+              key={i}
+              className={`rounded-lg border p-3 ${
+                s.riskScore >= 70
+                  ? "border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-900/20"
+                  : "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-900/20"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{s.studentName || s.studentId}</p>
+                <Badge tone={s.riskScore >= 70 ? "red" : "amber"}>Risk: {s.riskScore}%</Badge>
+              </div>
+              <p className="text-xs text-[var(--bio-muted)]">Course: {s.courseId} · {s.reason}</p>
             </div>
-            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: 0 }}>Course: {s.courseId} · {s.reason}</p>
-          </div>
-        ))}
-      </div>
-
-      <div style={cardStyle}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Course Engagement</h3>
-        <div style={{ display: "flex", gap: "0.75rem", marginBottom: "0.75rem" }}>
-          <div style={{ flex: 1 }}>
-            <input style={inputStyle} placeholder="Course ID" value={engCourseId} onChange={e => setEngCourseId(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && loadEngagement()} />
-          </div>
-          <button onClick={loadEngagement} style={btnStyle}>Load</button>
+          ))}
         </div>
-        {loadingEng && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
+      </Card>
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Activity className="h-4 w-4 text-brand-500" /> Course Engagement
+        </h3>
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
+          <Input
+            className="sm:col-span-2"
+            placeholder="Course ID"
+            value={engCourseId}
+            onChange={e => setEngCourseId(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && loadEngagement()}
+          />
+          <Button variant="primary" onClick={loadEngagement}>
+            <Search className="h-4 w-4" /> Load
+          </Button>
+        </div>
+        {loadingEng && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
         {engagement && !loadingEng && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
-            {[["Attendance", `${engagement.attendanceRate}%`], ["Submission Rate", `${engagement.submissionRate}%`], ["Avg Session", `${engagement.avgSessionMinutes} min`]].map(([l, v], i) => (
-              <div key={i} style={{ background: "#f8fafc", padding: "0.75rem", borderRadius: 6, textAlign: "center" }}>
-                <p style={{ fontSize: "0.75rem", color: "#64748b", margin: 0 }}>{l}</p>
-                <p style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "#2563eb" }}>{v}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { label: "Attendance", value: `${engagement.attendanceRate}%` },
+              { label: "Submission Rate", value: `${engagement.submissionRate}%` },
+              { label: "Avg Session", value: `${engagement.avgSessionMinutes} min` },
+            ].map(m => (
+              <div key={m.label} className="rounded-lg bg-[var(--bio-surface-2)] p-3 text-center">
+                <p className="text-xs text-[var(--bio-muted)]">{m.label}</p>
+                <p className="text-xl font-bold text-brand-600 dark:text-brand-400">{m.value}</p>
               </div>
             ))}
           </div>
         )}
-        {!engagement && !loadingEng && engCourseId && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>No data loaded</p>}
-      </div>
+        {!engagement && !loadingEng && engCourseId && <p className="text-sm text-[var(--bio-muted)]">No data loaded</p>}
+      </Card>
 
-      <div style={cardStyle}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Grade Distribution</h3>
-        <div style={{ display: "flex", gap: "0.75rem", marginBottom: "0.75rem" }}>
-          <div style={{ flex: 1 }}>
-            <input style={inputStyle} placeholder="Course ID" value={distCourseId} onChange={e => setDistCourseId(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && loadDistribution()} />
-          </div>
-          <button onClick={loadDistribution} style={btnStyle}>Load</button>
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <BarChart3 className="h-4 w-4 text-brand-500" /> Grade Distribution
+        </h3>
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
+          <Input
+            className="sm:col-span-2"
+            placeholder="Course ID"
+            value={distCourseId}
+            onChange={e => setDistCourseId(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && loadDistribution()}
+          />
+          <Button variant="primary" onClick={loadDistribution}>
+            <Search className="h-4 w-4" /> Load
+          </Button>
         </div>
-        {loadingDist && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
+        {loadingDist && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
         {distribution && !loadingDist && (
           <div>
-            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {(["A", "B", "C", "D", "F"] as const).map(g => {
                 const count = distribution[g] || 0;
                 const pct = distribution.total > 0 ? Math.round((count / distribution.total) * 100) : 0;
-                const colors: Record<string, string> = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#ea580c", F: "#dc2626" };
                 return (
-                  <div key={g} style={{ flex: 1, textAlign: "center", background: "#f8fafc", padding: "0.75rem 0.5rem", borderRadius: 6 }}>
-                    <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.25rem" }}>Grade {g}</p>
-                    <p style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: colors[g] }}>{count}</p>
-                    <div style={{ height: 4, background: "#e2e8f0", borderRadius: 2, marginTop: "0.25rem", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${pct}%`, background: colors[g], borderRadius: 2 }} />
+                  <div key={g} className="rounded-lg bg-[var(--bio-surface-2)] p-2.5 text-center">
+                    <p className="text-xs text-[var(--bio-muted)]">Grade {g}</p>
+                    <p className={`text-lg font-bold ${gradeText[g]}`}>{count}</p>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bio-border)]">
+                      <div className={`h-full rounded-full ${gradeBarBg[g]}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p style={{ fontSize: "0.65rem", color: "#94a3b8", margin: "0.15rem 0 0" }}>{pct}%</p>
+                    <p className="mt-1 text-xs text-[var(--bio-muted)]">{pct}%</p>
                   </div>
                 );
               })}
             </div>
-            <p style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "0.5rem", textAlign: "right" }}>Total: {distribution.total} students</p>
+            <p className="mt-2 text-right text-xs text-[var(--bio-muted)]">Total: {distribution.total} students</p>
           </div>
         )}
-        {!distribution && !loadingDist && distCourseId && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>No data loaded</p>}
-      </div>
+        {!distribution && !loadingDist && distCourseId && <p className="text-sm text-[var(--bio-muted)]">No data loaded</p>}
+      </Card>
     </div>
   );
 }

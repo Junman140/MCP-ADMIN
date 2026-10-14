@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { login } from "../api";
+import { GraduationCap } from "lucide-react";
+import { Button, Input } from "@bio/ui";
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -23,18 +25,32 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#f1f5f9" }}>
-      <form onSubmit={handleLogin} style={{ background: "#fff", padding: "2rem", borderRadius: 8, width: 360, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem" }}>Lecturer Portal</h1>
-        {error && <p style={{ color: "#dc2626", fontSize: "0.875rem", marginBottom: "0.5rem" }}>{error}</p>}
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
-          style={{ width: "100%", padding: "0.625rem", marginBottom: "0.75rem", border: "1px solid #e2e8f0", borderRadius: 6 }} />
-        <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
-          style={{ width: "100%", padding: "0.625rem", marginBottom: "1rem", border: "1px solid #e2e8f0", borderRadius: 6 }} />
-        <button type="submit" disabled={loading}
-          style={{ width: "100%", padding: "0.625rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bio-surface-2)] p-4 dark:bg-slate-950">
+      <form onSubmit={handleLogin} className="card w-full max-w-sm space-y-4 p-8">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
+            <GraduationCap className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Lecturer Portal</h1>
+        </div>
+        {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+        <div className="space-y-3">
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        </div>
+        <Button type="submit" variant="primary" className="w-full" disabled={loading}>
           {loading ? "Signing in..." : "Sign In"}
-        </button>
+        </Button>
       </form>
     </div>
   );

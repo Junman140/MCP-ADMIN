@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Plus, Award, CheckCircle2 } from "lucide-react";
+import { Badge, Button, Card, Input, PageHeader } from "@bio/ui";
 
 type Grade = { id: string; studentId: string; studentName: string; courseId: string; score: number; grade: string; approved: boolean };
 
@@ -45,55 +47,55 @@ export default function GradeBook() {
     } catch { setError("Failed to approve grade"); }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.875rem", width: "100%",
-  };
-  const btnStyle: React.CSSProperties = {
-    padding: "0.5rem 1rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: "0.8125rem", whiteSpace: "nowrap",
-  };
-
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1rem" }}>Grade Book</h1>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.5rem 1rem", borderRadius: 6, marginBottom: "1rem", fontSize: "0.875rem" }}>{error}</div>}
-      <div style={{ background: "#fff", padding: "1rem", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "1.5rem" }}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Add Grade</h3>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <input style={inputStyle} placeholder="Student ID" value={studentId} onChange={e => setStudentId(e.target.value)} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <input style={inputStyle} placeholder="Course ID" value={courseId} onChange={e => setCourseId(e.target.value)} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <input style={inputStyle} type="number" placeholder="Score (%)" value={score} onChange={e => setScore(e.target.value)} min="0" max="100" />
-          </div>
-          <button onClick={createGrade} style={btnStyle}>Add</button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Grade Book" subtitle="Record scores and approve student grades." />
 
-      <div style={{ background: "#fff", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", overflow: "hidden" }}>
-        <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", fontWeight: 600, fontSize: "0.9rem" }}>Grades</div>
-        {loading && <p style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
-        {!loading && grades.length === 0 && <p style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.85rem" }}>No grades found</p>}
-        {grades.map(g => (
-          <div key={g.id} style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <p style={{ fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{g.studentName || g.studentId}</p>
-              <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
-                Course: {g.courseId} · Score: {g.score}% · Grade: {g.grade || "—"}
-              </p>
+      {error && (
+        <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{error}</div>
+      )}
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Plus className="h-4 w-4 text-brand-500" /> Add Grade
+        </h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+          <Input placeholder="Student ID" value={studentId} onChange={e => setStudentId(e.target.value)} />
+          <Input placeholder="Course ID" value={courseId} onChange={e => setCourseId(e.target.value)} />
+          <Input type="number" placeholder="Score (%)" value={score} onChange={e => setScore(e.target.value)} min="0" max="100" />
+          <Button variant="primary" onClick={createGrade}>Add</Button>
+        </div>
+      </Card>
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Award className="h-4 w-4 text-brand-500" /> Grades
+        </h3>
+        {loading && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
+        {!loading && grades.length === 0 && <p className="text-sm text-[var(--bio-muted)]">No grades found</p>}
+        <div className="divide-y divide-[var(--bio-border)]">
+          {grades.map(g => (
+            <div key={g.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{g.studentName || g.studentId}</p>
+                <p className="text-xs text-[var(--bio-muted)]">
+                  Course: {g.courseId} · Score: {g.score}% · Grade: {g.grade || "—"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {g.approved
+                  ? <Badge tone="green"><CheckCircle2 className="mr-1 h-3 w-3" /> Approved</Badge>
+                  : (<Button
+                      variant="secondary"
+                      onClick={() => approveGrade(g.id)}
+                      className="px-2.5 py-1 text-xs text-emerald-600 dark:text-emerald-400"
+                    >Approve</Button>)
+                }
+              </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              {g.approved
-                ? <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: 600 }}>Approved</span>
-                : (<button onClick={() => approveGrade(g.id)}
-                    style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "0.3rem 0.75rem", borderRadius: 6, cursor: "pointer", fontSize: "0.75rem" }}>Approve</button>)
-              }
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

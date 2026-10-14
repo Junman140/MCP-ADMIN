@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Plus, QrCode, BarChart3, X } from "lucide-react";
+import { Button, Card, Input, Modal, PageHeader } from "@bio/ui";
 
 type Session = { id: string; date: string; courseId: string; code: string; status: string };
 type Report = { present: number; absent: number; late: number; students: { name: string; status: string }[] };
@@ -53,95 +55,118 @@ export default function AttendanceManager() {
     } catch { setError("Failed to load report"); setReportModal(null); }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.875rem", width: "100%",
-  };
-  const btnStyle: React.CSSProperties = {
-    padding: "0.5rem 1rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: "0.8125rem", whiteSpace: "nowrap",
-  };
-  const secondaryBtnStyle: React.CSSProperties = {
-    padding: "0.3rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", fontSize: "0.75rem", background: "#fff",
-  };
-
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1rem" }}>Attendance Manager</h1>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.5rem 1rem", borderRadius: 6, marginBottom: "1rem", fontSize: "0.875rem" }}>{error}</div>}
+    <div className="space-y-6">
+      <PageHeader title="Attendance Manager" subtitle="Run sessions and review attendance reports." />
 
-      <div style={{ background: "#fff", padding: "1rem", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "1.5rem" }}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Create Session</h3>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <input style={inputStyle} placeholder="Course ID" value={courseId} onChange={e => setCourseId(e.target.value)} />
-          </div>
-          <button onClick={createSession} disabled={submitting} style={btnStyle}>
-            {submitting ? "Creating..." : "Create"}
-          </button>
-        </div>
-      </div>
-
-      <div style={{ background: "#fff", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", overflow: "hidden" }}>
-        <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", fontWeight: 600, fontSize: "0.9rem" }}>Attendance Sessions</div>
-        {loading && <p style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
-        {!loading && sessions.length === 0 && <p style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.85rem" }}>No sessions found</p>}
-        {sessions.map(s => (
-          <div key={s.id} style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <p style={{ fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>Course: {s.courseId}</p>
-              <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
-                {s.date ? new Date(s.date).toLocaleString() : "—"} · Code: {s.code || "—"} · {s.status}
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button onClick={() => showQR(s.id)} style={secondaryBtnStyle}>QR</button>
-              <button onClick={() => showReport(s.id)} style={secondaryBtnStyle}>Report</button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {qrModal && (
-        <div onClick={() => setQrModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: "2rem", borderRadius: 8, textAlign: "center", minWidth: 280 }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1rem" }}>Attendance Code</h3>
-            <p style={{ fontSize: "2.5rem", fontWeight: 700, letterSpacing: "0.2em", margin: "0 0 1rem", color: "#2563eb" }}>{qrModal.code}</p>
-            <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginBottom: "1rem" }}>Session: {qrModal.sessionId}</p>
-            <button onClick={() => setQrModal(null)} style={{ ...btnStyle, background: "#64748b" }}>Close</button>
-          </div>
-        </div>
+      {error && (
+        <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{error}</div>
       )}
 
-      {reportModal && (
-        <div onClick={() => setReportModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: "1.5rem", borderRadius: 8, maxWidth: 500, width: "90%", maxHeight: "80vh", overflow: "auto" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1rem" }}>Attendance Report</h3>
-            {reportModal.loading && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Plus className="h-4 w-4 text-brand-500" /> Create Session
+        </h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
+          <Input className="sm:col-span-2" placeholder="Course ID" value={courseId} onChange={e => setCourseId(e.target.value)} />
+          <Button variant="primary" onClick={createSession} disabled={submitting}>
+            {submitting ? "Creating..." : "Create"}
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <QrCode className="h-4 w-4 text-brand-500" /> Attendance Sessions
+        </h3>
+        {loading && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
+        {!loading && sessions.length === 0 && <p className="text-sm text-[var(--bio-muted)]">No sessions found</p>}
+        <div className="divide-y divide-[var(--bio-border)]">
+          {sessions.map(s => (
+            <div key={s.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Course: {s.courseId}</p>
+                <p className="text-xs text-[var(--bio-muted)]">
+                  {s.date ? new Date(s.date).toLocaleString() : "—"} · Code: {s.code || "—"} · {s.status}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => showQR(s.id)} className="px-2.5 py-1 text-xs">
+                  <QrCode className="h-3.5 w-3.5" /> QR
+                </Button>
+                <Button variant="secondary" onClick={() => showReport(s.id)} className="px-2.5 py-1 text-xs">
+                  <BarChart3 className="h-3.5 w-3.5" /> Report
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Modal open={!!qrModal} onClose={() => setQrModal(null)} title="Attendance Code">
+        {qrModal && (
+          <div className="text-center">
+            <p className="mb-4 text-4xl font-bold tracking-[0.2em] text-brand-600 dark:text-brand-400">{qrModal.code}</p>
+            <p className="mb-4 text-xs text-[var(--bio-muted)]">Session: {qrModal.sessionId}</p>
+            <Button variant="secondary" onClick={() => setQrModal(null)}>Close</Button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!reportModal} onClose={() => setReportModal(null)} title="Attendance Report">
+        {reportModal && (
+          <div>
+            {reportModal.loading && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
             {reportModal.report && (
               <div>
-                <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-                  {[["Present", reportModal.report.present, "#16a34a"], ["Absent", reportModal.report.absent, "#dc2626"], ["Late", reportModal.report.late, "#d97706"]].map(([l, v, c]) => (
-                    <div key={l as string} style={{ flex: 1, background: "#f8fafc", padding: "0.75rem", borderRadius: 6, textAlign: "center" }}>
-                      <p style={{ fontSize: "0.75rem", color: "#64748b", margin: 0 }}>{l}</p>
-                      <p style={{ fontSize: "1.25rem", fontWeight: 700, color: c as string, margin: 0 }}>{v}</p>
-                    </div>
-                  ))}
+                <div className="mb-4 grid grid-cols-3 gap-3">
+                  <div className="rounded-lg bg-[var(--bio-surface-2)] p-3 text-center">
+                    <p className="text-xs text-[var(--bio-muted)]">Present</p>
+                    <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{reportModal.report.present}</p>
+                  </div>
+                  <div className="rounded-lg bg-[var(--bio-surface-2)] p-3 text-center">
+                    <p className="text-xs text-[var(--bio-muted)]">Absent</p>
+                    <p className="text-xl font-bold text-rose-600 dark:text-rose-400">{reportModal.report.absent}</p>
+                  </div>
+                  <div className="rounded-lg bg-[var(--bio-surface-2)] p-3 text-center">
+                    <p className="text-xs text-[var(--bio-muted)]">Late</p>
+                    <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{reportModal.report.late}</p>
+                  </div>
                 </div>
                 {reportModal.report.students && reportModal.report.students.length > 0 && (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
-                    <thead><tr style={{ borderBottom: "2px solid #e2e8f0" }}><th style={{ padding: "0.5rem", textAlign: "left" }}>Student</th><th style={{ padding: "0.5rem", textAlign: "left" }}>Status</th></tr></thead>
-                    <tbody>
-                      {reportModal.report.students.map((st, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}><td style={{ padding: "0.5rem" }}>{st.name}</td><td style={{ padding: "0.5rem", color: st.status === "absent" ? "#dc2626" : "#16a34a" }}>{st.status}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--bio-border)] text-xs uppercase tracking-wide text-[var(--bio-muted)]">
+                          <th className="px-2 py-2 font-medium">Student</th>
+                          <th className="px-2 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reportModal.report.students.map((st, i) => (
+                          <tr key={i} className="border-b border-[var(--bio-border)] last:border-b-0">
+                            <td className="px-2 py-2 text-slate-800 dark:text-slate-100">{st.name}</td>
+                            <td className={`px-2 py-2 text-sm font-medium ${
+                              st.status === "absent"
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }`}>{st.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
-            <button onClick={() => setReportModal(null)} style={{ ...btnStyle, background: "#64748b", marginTop: "1rem" }}>Close</button>
+            <div className="mt-4 flex justify-end">
+              <Button variant="secondary" onClick={() => setReportModal(null)}>
+                <X className="h-4 w-4" /> Close
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

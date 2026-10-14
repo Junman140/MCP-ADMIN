@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Plus, CalendarClock, X } from "lucide-react";
+import { Button, Card, EmptyState, Input, PageHeader, Select } from "@bio/ui";
 
 type Entry = { id: string; day: string; timeSlot: string; courseId: string; courseCode: string; room: string };
 
@@ -46,66 +48,64 @@ export default function TimetableViewer() {
     } catch { setError("Failed to delete entry"); }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.875rem", width: "100%",
-  };
-  const btnStyle: React.CSSProperties = {
-    padding: "0.5rem 1rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: "0.8125rem", whiteSpace: "nowrap",
-  };
-
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1rem" }}>Timetable</h1>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.5rem 1rem", borderRadius: 6, marginBottom: "1rem", fontSize: "0.875rem" }}>{error}</div>}
+    <div className="space-y-6">
+      <PageHeader title="Timetable" subtitle="View and manage your weekly teaching schedule." />
 
-      <div style={{ background: "#fff", padding: "1rem", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "1.5rem" }}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Add Timetable Entry</h3>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 120 }}>
-            <select style={inputStyle} value={day} onChange={e => setDay(e.target.value)}>
-              {days.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-          <div style={{ flex: 1, minWidth: 120 }}>
-            <input style={inputStyle} placeholder="Time (e.g. 09:00-10:00)" value={timeSlot} onChange={e => setTimeSlot(e.target.value)} />
-          </div>
-          <div style={{ flex: 1, minWidth: 120 }}>
-            <input style={inputStyle} placeholder="Course ID" value={courseId} onChange={e => setCourseId(e.target.value)} />
-          </div>
-          <div style={{ flex: 1, minWidth: 120 }}>
-            <input style={inputStyle} placeholder="Room (optional)" value={room} onChange={e => setRoom(e.target.value)} />
-          </div>
-          <button onClick={createEntry} style={btnStyle}>Add</button>
+      {error && (
+        <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{error}</div>
+      )}
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Plus className="h-4 w-4 text-brand-500" /> Add Timetable Entry
+        </h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+          <Select value={day} onChange={e => setDay(e.target.value)}>
+            {days.map(d => <option key={d} value={d}>{d}</option>)}
+          </Select>
+          <Input placeholder="Time (e.g. 09:00-10:00)" value={timeSlot} onChange={e => setTimeSlot(e.target.value)} />
+          <Input placeholder="Course ID" value={courseId} onChange={e => setCourseId(e.target.value)} />
+          <Input placeholder="Room (optional)" value={room} onChange={e => setRoom(e.target.value)} />
+          <Button variant="primary" onClick={createEntry}>Add</Button>
         </div>
-      </div>
+      </Card>
 
-      {loading && <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
+      {loading && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
       {!loading && entries.length === 0 && (
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", textAlign: "center" }}>
-          <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>No timetable entries found</p>
-        </div>
+        <EmptyState title="No timetable entries found" hint="Add your first entry with the form above." />
       )}
 
       {days.map(d => {
         const dayEntries = entries.filter(e => e.day === d).sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
         if (dayEntries.length === 0) return null;
         return (
-          <div key={d} style={{ background: "#fff", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "1rem", overflow: "hidden" }}>
-            <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", fontWeight: 600, fontSize: "0.9rem", background: "#f8fafc" }}>{d}</div>
-            {dayEntries.map(e => (
-              <div key={e.id} style={{ padding: "0.6rem 1rem", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", gap: "1.5rem" }}>
-                  <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#2563eb", minWidth: 100 }}>{e.timeSlot}</span>
-                  <span style={{ fontSize: "0.85rem" }}>{e.courseCode || e.courseId}</span>
-                  {e.room && <span style={{ fontSize: "0.8rem", color: "#64748b" }}>Room: {e.room}</span>}
+          <Card key={d}>
+            <h3 className="mb-3 flex items-center gap-2 border-b border-[var(--bio-border)] pb-3 text-base font-semibold text-slate-800 dark:text-slate-100">
+              <CalendarClock className="h-4 w-4 text-brand-500" /> {d}
+            </h3>
+            <div className="divide-y divide-[var(--bio-border)]">
+              {dayEntries.map(e => (
+                <div key={e.id} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                    <span className="min-w-[100px] text-sm font-semibold text-brand-600 dark:text-brand-400">{e.timeSlot}</span>
+                    <span className="text-sm text-slate-800 dark:text-slate-100">{e.courseCode || e.courseId}</span>
+                    {e.room && <span className="text-xs text-[var(--bio-muted)]">Room: {e.room}</span>}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => deleteEntry(e.id)}
+                    className="self-start px-2 py-1 text-rose-500 hover:text-rose-700 dark:text-rose-400 sm:self-auto"
+                    aria-label="Delete entry"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <button onClick={() => deleteEntry(e.id)}
-                  style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "0.75rem" }}>x</button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Card>
         );
       })}
     </div>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { Send, Megaphone, Trash2 } from "lucide-react";
+import { Button, Card, Input, PageHeader, Textarea } from "@bio/ui";
 
 type Announcement = { id: string; title: string; body: string; courseId: string; createdAt: string };
 
@@ -45,51 +47,59 @@ export default function AnnouncementManager() {
     } catch { setError("Failed to delete announcement"); }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.875rem", width: "100%",
-  };
-  const btnStyle: React.CSSProperties = {
-    padding: "0.5rem 1rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: "0.8125rem", whiteSpace: "nowrap",
-  };
-
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1rem" }}>Announcements</h1>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.5rem 1rem", borderRadius: 6, marginBottom: "1rem", fontSize: "0.875rem" }}>{error}</div>}
-      <div style={{ background: "#fff", padding: "1rem", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "1.5rem" }}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.75rem" }}>New Announcement</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <div style={{ display: "flex", gap: "0.75rem" }}>
-            <div style={{ flex: 2 }}>
-              <input style={inputStyle} placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <input style={inputStyle} placeholder="Course ID (optional)" value={courseId} onChange={e => setCourseId(e.target.value)} />
-            </div>
-          </div>
-          <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} placeholder="Announcement body" value={body} onChange={e => setBody(e.target.value)} />
-          <button onClick={createAnnouncement} style={{ ...btnStyle, alignSelf: "flex-end" }}>Post</button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Announcements" subtitle="Post updates to students across your courses." />
 
-      <div style={{ background: "#fff", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)", overflow: "hidden" }}>
-        <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", fontWeight: 600, fontSize: "0.9rem" }}>All Announcements</div>
-        {loading && <p style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.85rem" }}>Loading...</p>}
-        {!loading && announcements.length === 0 && <p style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.85rem" }}>No announcements yet</p>}
-        {announcements.map(a => (
-          <div key={a.id} style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #f1f5f9" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.25rem" }}>
-              <p style={{ fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{a.title}</p>
-              <button onClick={() => deleteAnnouncement(a.id)}
-                style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "0.75rem", padding: "0.25rem" }}>Delete</button>
-            </div>
-            <p style={{ fontSize: "0.85rem", color: "#475569", margin: "0 0 0.25rem" }}>{a.body}</p>
-            <p style={{ fontSize: "0.7rem", color: "#94a3b8", margin: 0 }}>
-              {a.courseId ? `Course: ${a.courseId} · ` : ""}{a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
-            </p>
+      {error && (
+        <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{error}</div>
+      )}
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Send className="h-4 w-4 text-brand-500" /> New Announcement
+        </h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Input className="sm:col-span-2" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} />
+            <Input placeholder="Course ID (optional)" value={courseId} onChange={e => setCourseId(e.target.value)} />
           </div>
-        ))}
-      </div>
+          <Textarea className="min-h-[80px] resize-y" placeholder="Announcement body" value={body} onChange={e => setBody(e.target.value)} />
+          <div className="flex justify-end">
+            <Button variant="primary" onClick={createAnnouncement}>
+              <Send className="h-4 w-4" /> Post
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100">
+          <Megaphone className="h-4 w-4 text-brand-500" /> All Announcements
+        </h3>
+        {loading && <p className="text-sm text-[var(--bio-muted)]">Loading...</p>}
+        {!loading && announcements.length === 0 && <p className="text-sm text-[var(--bio-muted)]">No announcements yet</p>}
+        <div className="divide-y divide-[var(--bio-border)]">
+          {announcements.map(a => (
+            <div key={a.id} className="py-3">
+              <div className="mb-1 flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{a.title}</p>
+                <Button
+                  variant="ghost"
+                  onClick={() => deleteAnnouncement(a.id)}
+                  className="shrink-0 px-2 py-1 text-xs text-rose-500 hover:text-rose-700 dark:text-rose-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </Button>
+              </div>
+              <p className="mb-1 text-sm text-slate-600 dark:text-slate-300">{a.body}</p>
+              <p className="text-xs text-[var(--bio-muted)]">
+                {a.courseId ? `Course: ${a.courseId} · ` : ""}{a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
