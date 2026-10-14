@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, apiUrl } from "../api";
 import { Download, AlertCircle, CheckCircle2, Clock, XCircle, RefreshCw, CreditCard } from "lucide-react";
 import { Badge, Button, Card, PageHeader, Tabs } from "@bio/ui";
 
@@ -124,7 +124,7 @@ export default function Payments() {
     try {
       const receipt = await api<any>(`/payments/invoices/${invoiceId}/receipt`);
       const token = localStorage.getItem("token");
-      const res = await fetch(`/api/payments/receipts/${receipt.id}/download`, {
+      const res = await fetch(apiUrl(`/payments/receipts/${receipt.id}/download`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Download failed");

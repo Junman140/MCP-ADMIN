@@ -1,0 +1,14 @@
+{
+  "name": "@bio/electron-config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./main": "./src/main.js",
+    "./preload": "./src/preload.cjs"
+  },
+  "scripts": {
+    "typecheck": "node --check src/index.js && node --check src/main.js && node --check src/preload.cjs"
+  }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, apiUrl } from "../api";
 import { FileText, Clock, Upload, Loader2 } from "lucide-react";
 import { Button, Card, PageHeader, Select, Tabs } from "@bio/ui";
 
@@ -167,7 +167,7 @@ export default function Assessments() {
                     setUploading(a.id);
                     const form = new FormData();
                     form.append("file", file);
-                    await fetch(`/api/assignments/${a.id}/submit`, {
+                    await fetch(apiUrl(`/assignments/${a.id}/submit`), {
                       method: "POST",
                       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
                       body: form,

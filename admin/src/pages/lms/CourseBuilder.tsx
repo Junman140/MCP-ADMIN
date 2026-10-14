@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../../api";
+import { api, apiUrl } from "../../api";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 
 type Module = { id: string; title: string; description?: string; order: number; parentId?: string };
@@ -63,7 +63,7 @@ export default function CourseBuilder() {
     if (!file) return;
     const form = new FormData();
     form.append("file", file);
-    await fetch(`/api/content/upload/file?tenantId=${localStorage.getItem("selectedTenantId") ?? ""}`, {
+    await fetch(apiUrl(`/content/upload/file?tenantId=${localStorage.getItem("selectedTenantId") ?? ""}`), {
       method: "POST",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       body: form,

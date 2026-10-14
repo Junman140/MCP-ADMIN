@@ -1,4 +1,23 @@
-const base = "/api";
+// Base is resolved at runtime so the same build works two ways: served
+// same-origin (web, base "/api"), or launched from Electron where the preload
+// injects window.__ELECTRON_ENV__.VITE_API_BASE pointing at a remote host.
+declare global {
+  interface Window {
+    __ELECTRON_ENV__?: { VITE_API_BASE?: string; VITE_CBT_API_BASE?: string };
+  }
+}
+const host = window.__ELECTRON_ENV__?.VITE_API_BASE ?? import.meta.env?.VITE_API_BASE;
+const base = host ? `${host}/api` : "/api";
+
+// cbtBase resolves the CBT API root. Electron sets VITE_CBT_API_BASE to point at
+// the deployed cbt-api origin; web falls back to the "/cbt-api" reverse-proxy path.
+const cbtHost = window.__ELECTRON_ENV__?.VITE_CBT_API_BASE ?? import.meta.env?.VITE_CBT_API_BASE;
+const cbtBase = cbtHost ?? "/cbt-api";
+
+// cbtApiUrl builds an absolute URL for the CBT API.
+export function cbtApiUrl(path: string): string {
+  return `${cbtBase}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 const USER_KEY = "user";
 const TENANT_KEY = "selectedTenantId";
@@ -146,7 +165,7 @@ export async function apiCBT<T>(path: string, opts: RequestInit = {}): Promise<T
   const tenantId = getSelectedTenantId();
   if (tenantId) headers["X-Tenant-ID"] = tenantId;
 
-  const res = await fetch(`/cbt-api${path}`, { ...opts, headers });
+  const res = await fetch(cbtApiUrl(path), { ...opts, headers });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || res.statusText);

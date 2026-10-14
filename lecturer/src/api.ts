@@ -1,4 +1,18 @@
-const base = "/api";
+// Base is resolved at runtime so the same build works two ways: served
+// same-origin (web, base "/api"), or launched from Electron where the preload
+// injects window.__ELECTRON_ENV__.VITE_API_BASE pointing at a remote host.
+declare global {
+  interface Window {
+    __ELECTRON_ENV__?: { VITE_API_BASE?: string };
+  }
+}
+const host = window.__ELECTRON_ENV__?.VITE_API_BASE ?? import.meta.env?.VITE_API_BASE;
+const base = host ? `${host}/api` : "/api";
+
+// apiUrl builds an absolute URL for raw fetch() calls that bypass api().
+export function apiUrl(path: string): string {
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 const USER_KEY = "lec_user";
 const TOKEN_KEY = "lec_token";
