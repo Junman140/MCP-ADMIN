@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { isLoggedIn, logout, getUser } from "./api";
 import Layout from "./Layout";
@@ -22,18 +22,21 @@ export default function App() {
   function onLogin() { setLoggedIn(true); }
   function onLogout() { logout(); setLoggedIn(false); }
 
+  // HashRouter: the desktop shell loads this build from disk over file://,
+  // where BrowserRouter would read the whole filesystem path as the route.
+  // The hash is ignored by the server, so the web deployment is unaffected.
   if (!loggedIn) {
     return (
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="*" element={<Login onLogin={onLogin} />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     );
   }
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Layout onLogout={onLogout} theme={theme} setTheme={setTheme}>
         <Routes>
           <Route path="/" element={<Navigate to="/lms" replace />} />
@@ -49,6 +52,6 @@ export default function App() {
           <Route path="/lms/analytics" element={<LMSAnalytics />} />
         </Routes>
       </Layout>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

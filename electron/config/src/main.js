@@ -33,21 +33,27 @@ function resolveApiHost(argv) {
  * buildCsp restricts the renderer to its own bundle plus the resolved API
  * hosts. Network, images, and media may only reach the configured backend.
  *
+ * The renderer is loaded from disk over file://, so scheme sources stand in
+ * for local assets and the API hosts are appended as explicit network
+ * sources. Vite tags its assets crossorigin, which is harmless here: a
+ * relative file: URL to a sibling asset is not cross-origin, and the assets
+ * are served from the same directory as index.html.
+ *
  * @param {string} apiHost
  * @returns {string}
  */
 function buildCsp(apiHost) {
   const connect = [apiHost, cbtHostFrom(apiHost)].join(" ");
   return [
-    "default-src 'self'",
-    `connect-src 'self' ${connect}`,
-    `img-src 'self' data: blob: ${apiHost}`,
-    `media-src 'self' blob: ${apiHost}`,
-    "style-src 'self' 'unsafe-inline'",
-    "script-src 'self'",
+    "default-src file:",
+    `connect-src file: ${connect}`,
+    `img-src file: data: blob: ${apiHost}`,
+    `media-src file: blob: ${apiHost}`,
+    "style-src file: 'unsafe-inline'",
+    "script-src file:",
     "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
+    "base-uri file:",
+    "form-action 'none'",
     "frame-ancestors 'none'",
   ].join("; ");
 }

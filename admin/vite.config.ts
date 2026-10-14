@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Relative asset URLs so the same build works served at the domain root
+  // (web) and loaded from disk via file:// (Electron desktop shells).
+  base: "./",
   server: {
     port: 5173,
     proxy: {

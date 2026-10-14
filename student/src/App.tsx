@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, BrowserRouter } from "react-router-dom";
+import { Navigate, Route, Routes, HashRouter } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getToken } from "./api";
 import StudentLogin from "./pages/StudentLogin";
@@ -17,7 +17,10 @@ import Payments from "./pages/Payments";
 export default function App() {
   const [authed, setAuthed] = useState(!!getToken());
   return (
-    <BrowserRouter>
+    // HashRouter: the desktop shell loads this build from disk over file://,
+    // where BrowserRouter would read the whole filesystem path as the route.
+    // The hash is ignored by the server, so the web deployment is unaffected.
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<StudentLogin onLogin={() => setAuthed(true)} />} />
         <Route path="/" element={authed ? <StudentLayout onLogout={() => setAuthed(false)} /> : <Navigate to="/login" replace />}>
@@ -33,6 +36,6 @@ export default function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
